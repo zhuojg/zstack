@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "zstack Worker Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "task_id",
+    "step_id",
+    "role",
+    "status",
+    "git_evidence",
+    "checks",
+    "findings",
+    "open_risks",
+    "next_recommendation"
+  ],
+  "properties": {
+    "contract_version": { "const": "1.0" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "step_id": { "type": "string", "minLength": 1 },
+    "role": { "enum": ["implementer", "reviewer", "investigator", "merger"] },
+    "status": { "enum": ["pass", "changes_requested", "blocked", "needs_human"] },
+    "git_evidence": {
+      "type": "object",
+      "required": ["repo", "base_sha", "head_sha", "changed_files", "working_tree_clean"],
+      "properties": {
+        "repo": { "type": "string" },
+        "pr_url": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "base_sha": { "type": "string" },
+        "head_sha": { "type": "string" },
+        "merged_commit_sha": { "type": ["string", "null"] },
+        "changed_files": { "type": "array", "items": { "type": "string" } },
+        "working_tree_clean": { "type": "boolean" }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "command", "result", "passed", "failed", "skipped"],
+        "properties": {
+          "name": { "type": "string" },
+          "command": { "type": "string" },
+          "result": { "enum": ["pass", "fail", "skipped", "not_run"] },
+          "passed": { "type": "integer", "minimum": 0 },
+          "failed": { "type": "integer", "minimum": 0 },
+          "skipped": { "type": "integer", "minimum": 0 },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "status", "location", "summary"],
+        "properties": {
+          "id": { "type": "string" },
+          "severity": { "enum": ["blocker", "major", "minor"] },
+          "status": { "enum": ["open", "resolved", "wontfix_approved"] },
+          "location": { "type": "string" },
+          "summary": { "type": "string" },
+          "repro_or_evidence": { "type": "string" }
+        }
+      }
+    },
+    "environment_evidence": {
+      "type": ["object", "null"],
+      "properties": {
+        "environment": { "type": "string" },
+        "read_only_confirmed": { "type": "boolean" },
+        "diagnostic_ids": { "type": "array", "items": { "type": "string" } },
+        "mutations_performed": { "type": "integer", "const": 0 }
+      }
+    },
+    "open_risks": { "type": "array", "items": { "type": "string" } },
+    "next_recommendation": { "type": "string" }
+  }
+}

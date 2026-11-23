@@ -1,0 +1,9 @@
+# Project-level Codex guardrail for zstack Orchestrator.
+# Note: Requires trusting this path in ~/.codex/config.toml to take effect.
+# Verify in MVP Experiment 1 whether T3 full-access overrides sandbox_mode.
+
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+network_access = false

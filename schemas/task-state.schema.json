@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "zstack Task State",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "project_slug",
+    "title",
+    "phase",
+    "created_at",
+    "updated_at",
+    "threads",
+    "pull_request",
+    "gates",
+    "idempotency_keys",
+    "open_risks"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "task_id": { "type": "string" },
+    "project_slug": { "type": "string" },
+    "title": { "type": "string" },
+    "phase": {
+      "enum": [
+        "intake",
+        "implementing",
+        "reviewing",
+        "fixing",
+        "ready_to_merge",
+        "merging",
+        "investigating",
+        "blocked_provider",
+        "blocked_dispatch",
+        "needs_human",
+        "closed"
+      ]
+    },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "threads": { "type": "object" },
+    "pull_request": { "type": ["object", "null"] },
+    "gates": { "type": "object" },
+    "idempotency_keys": { "type": "object" },
+    "open_risks": { "type": "array", "items": { "type": "string" } }
+  }
+}

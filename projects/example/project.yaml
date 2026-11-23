@@ -1,0 +1,49 @@
+schema_version: 1
+slug: "example"
+display_name: "Example Application"
+owner: "<your-github-handle>"
+policy_version: "2026-01-01"
+last_verified_at: "2026-01-01"
+
+t3:
+  project_id: "<t3-project-uuid>"
+  environment_id: "<t3-environment-uuid>"
+  workspace_root_ref: "/path/to/your-product-repos/example-app" # Metadata reference only; Orchestrator MUST NOT read/write this path
+
+repository:
+  canonical: "github.com/example-org/example-app"
+  default_branch: "origin/main"
+  trusted_remotes:
+    origin:
+      url: "git@github.com:example-org/example-app.git"
+      role: "primary_pr"
+      allow_push_branches: true
+      allow_push_default: false
+
+capabilities:
+  implement:
+    allowed: true
+    requires_worktree: true
+    default_provider: "codex"
+    default_model: "gpt-6.2-sol"
+  review:
+    allowed: true
+    independent_thread_required: true
+    must_pin_head_sha: true
+    max_rounds: 3
+    default_provider: "antigravity"
+    default_model: "gemini-4-neon"
+  merge:
+    policy: "auto_merge_on_gate_pass" # auto_merge_on_gate_pass | human_approval_required
+    requires_independent_review_pass_on_head_sha: true
+  deploy:
+    policy: "forbidden_by_default"
+
+environments:
+  local:
+    access: "read_write_in_worktree"
+
+repo_sop_refs:
+  repo_agents_md: "AGENTS.md"
+
+zstack_sops: []

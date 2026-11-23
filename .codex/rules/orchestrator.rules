@@ -1,0 +1,58 @@
+# Codex execpolicy rules for zstack Orchestrator.
+# Test with: codex execpolicy check --pretty --rules .codex/rules/orchestrator.rules -- <cmd>
+
+# Allow safe zstack control-plane commands
+prefix_rule(
+    pattern = ["./scripts/zstack"],
+    decision = "allow",
+    justification = "zstack thin state, receipt, merge-gate, and secret-check CLI",
+)
+
+prefix_rule(
+    pattern = ["node", "scripts/zstack"],
+    decision = "allow",
+    justification = "zstack thin CLI invoked via node",
+)
+
+prefix_rule(
+    pattern = ["git", ["status", "diff", "log", "rev-parse", "add", "commit"]],
+    decision = "allow",
+    justification = "local git operations inside zstack repository",
+)
+
+prefix_rule(
+    pattern = ["rg"],
+    decision = "allow",
+    justification = "searching zstack policies, tasks, and memory",
+)
+
+# Forbid product toolchains, infrastructure, direct pushes, and direct merges
+prefix_rule(
+    pattern = [["pnpm", "npm", "npx", "yarn", "bun", "cargo", "rustc", "pytest", "vitest"]],
+    decision = "forbidden",
+    justification = "Orchestrator must not run product build/test toolchains; dispatch a worker thread.",
+)
+
+prefix_rule(
+    pattern = [["kubectl", "helm", "terraform", "docker", "ssh", "scp", "psql"]],
+    decision = "forbidden",
+    justification = "Orchestrator must not access infrastructure or production directly; dispatch an investigator/releaser.",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "forbidden",
+    justification = "Direct PR merge by Orchestrator is forbidden; require merge-gate pass and independent merger step.",
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "forbidden",
+    justification = "Orchestrator must not push branches directly from the orchestrator thread.",
+)
+
+prefix_rule(
+    pattern = ["git", "-C"],
+    decision = "forbidden",
+    justification = "Orchestrator must not run git commands against external product checkouts.",
+)

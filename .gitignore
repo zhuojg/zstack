@@ -1,0 +1,20 @@
+# Local caches & rebuildable indexes
+.zstack-cache/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Secrets & local overrides (NEVER commit)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+kubeconfig*
+secrets/
+ephemeral/
+
+# OS & editor junk
+.DS_Store
+.vscode/
+.idea/

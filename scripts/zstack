@@ -1,0 +1,801 @@
+#!/usr/bin/env node
+/**
+ * zstack thin control-plane CLI (zero external dependencies, Node >= 20 ESM).
+ *
+ * Commands:
+ *   active
+ *   board
+ *   init-task <task-id> <project-slug> <title> [--priority P0|P1|P2] [--phase <phase>] [--pr <url>] [--next|--next-step <text>]
+ *   set-phase <task-id> <phase> [--next|--next-step <text>] [--pr <url>] [--priority P0|P1|P2]
+ *   bind-thread <task-id> <role> <thread-id> [--provider <provider>] [--model <model>] [--note <text>]
+ *   archive-task <task-id> [reason]
+ *   next-request-id <task-id> <step> <key>
+ *   append-event <task-id> <type> [json-payload]
+ *   check-receipt <task-id> <receipt-path> [--pinned-sha <sha>] [--role <role>]
+ *   merge-gate <task-id>
+ *   check-secrets [paths...]
+ *   reindex
+ *   sync-template [--dry-run] [--out <dir>] [--push] [--remote <url_or_name>]
+ */
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, "..");
+
+function fail(msg) {
+  console.error(`[zstack] ERROR: ${msg}`);
+  process.exit(1);
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function formatShanghaiTime(input, { withOffset = false } = {}) {
+  const date = input ? new Date(input) : new Date();
+  if (Number.isNaN(date.getTime())) return "-";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || "00";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  const base = `${get("year")}-${get("month")}-${get("day")} ${hour}:${get("minute")}`;
+  return withOffset ? `${base} +08:00` : base;
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function taskDir(taskId) {
+  return path.join(ROOT, "tasks", "active", taskId);
+}
+
+function readTaskState(taskId) {
+  const statePath = path.join(taskDir(taskId), "state.json");
+  if (!fs.existsSync(statePath)) {
+    fail(`Active task "${taskId}" not found at ${statePath}`);
+  }
+  return { statePath, state: JSON.parse(fs.readFileSync(statePath, "utf8")) };
+}
+
+function writeTaskState(statePath, state) {
+  state.updated_at = nowIso();
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + "\n", "utf8");
+}
+
+function appendEventRecord(taskId, type, extra = {}) {
+  const eventsPath = path.join(taskDir(taskId), "events.jsonl");
+  const entry = { ts: nowIso(), type, ...extra };
+  fs.appendFileSync(eventsPath, JSON.stringify(entry) + "\n", "utf8");
+  return entry;
+}
+
+function readProjectMergePolicy(slug) {
+  const projectFile = path.join(ROOT, "projects", slug, "project.yaml");
+  if (!fs.existsSync(projectFile)) {
+    fail(`Project "${slug}" not registered at ${projectFile}`);
+  }
+  const text = fs.readFileSync(projectFile, "utf8");
+  const mergeBlock = text.match(/merge:\s*\n([\s\S]*?)(?:\n\s{2}\w+:|\n\w+:|$)/);
+  const policyMatch = mergeBlock?.[1]?.match(/policy:\s*["']?([^"'\n#]+)["']?/);
+  return {
+    projectFile,
+    mergePolicy: policyMatch ? policyMatch[1].trim() : "human_approval_required",
+  };
+}
+
+function listActiveTaskStates() {
+  const activeRoot = path.join(ROOT, "tasks", "active");
+  if (!fs.existsSync(activeRoot)) return [];
+  const rows = [];
+  for (const entry of fs.readdirSync(activeRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const statePath = path.join(activeRoot, entry.name, "state.json");
+    if (!fs.existsSync(statePath)) continue;
+    rows.push(JSON.parse(fs.readFileSync(statePath, "utf8")));
+  }
+  rows.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
+  return rows;
+}
+
+function countArchivedTasks() {
+  const archiveRoot = path.join(ROOT, "tasks", "archive");
+  if (!fs.existsSync(archiveRoot)) return 0;
+  let count = 0;
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (fs.existsSync(path.join(full, "state.json"))) count++;
+        else walk(full);
+      }
+    }
+  };
+  walk(archiveRoot);
+  return count;
+}
+
+function formatPrLinks(state) {
+  const prs = Array.isArray(state.pull_requests) && state.pull_requests.length > 0
+    ? state.pull_requests
+    : state.pull_request?.url
+      ? [state.pull_request.url]
+      : [];
+  if (prs.length === 0) return "-";
+  return prs
+    .map((u) => {
+      const m = String(u).match(/\/pull\/(\d+)$/);
+      return m ? `[#${m[1]}](${u})` : u;
+    })
+    .join(", ");
+}
+
+function rebuildBoard() {
+  const states = listActiveTaskStates();
+  const archivedCount = countArchivedTasks();
+  const phaseOrder = [
+    { key: "in_progress", label: "开发中 (In Progress)" },
+    { key: "in_review", label: "复审中 (In Review)" },
+    { key: "blocked", label: "阻塞 / 待拍板 (Blocked)" },
+    { key: "intake", label: "待开工 (Intake)" },
+    { key: "merged_pending_release", label: "已合入待发布 / 待验收 (Merged Pending Release)" },
+  ];
+  const knownKeys = new Set(phaseOrder.map((p) => p.key));
+  const lines = [
+    "# Local Task Board (Auto-generated by `./scripts/zstack board`)",
+    "",
+    `> Scope: 仅记录面向代码的开发功能/修复任务（常规集群升级、运维巡检等不建卡）。`,
+    `> Last rebuilt: ${formatShanghaiTime(new Date(), { withOffset: true })} · Active: ${states.length} · Archived: ${archivedCount} · Backlog: [BACKLOG.md](./BACKLOG.md)`,
+    "",
+  ];
+
+  const renderSection = (label, items) => {
+    lines.push(`## ${label} (${items.length})`, "");
+    if (items.length === 0) {
+      lines.push("_空_", "");
+      return;
+    }
+    lines.push("| Task ID | Project | Pri | Title | PRs | Next Step | Updated |");
+    lines.push("|---|---|---|---|---|---|---|");
+    for (const s of items) {
+      const pri = s.priority || "-";
+      const next = (s.next_step || "-").replace(/\|/g, "\\|").replace(/\n/g, " ");
+      const title = (s.title || "-").replace(/\|/g, "\\|");
+      const upd = s.updated_at ? formatShanghaiTime(s.updated_at) : "-";
+      lines.push(
+        `| [\`${s.task_id}\`](./active/${s.task_id}/state.json) | \`${s.project_slug}\` | ${pri} | ${title} | ${formatPrLinks(s)} | ${next} | ${upd} |`
+      );
+    }
+    lines.push("");
+  };
+
+  for (const p of phaseOrder) {
+    renderSection(p.label, states.filter((s) => s.phase === p.key));
+  }
+  const other = states.filter((s) => !knownKeys.has(s.phase));
+  if (other.length > 0) {
+    renderSection("其他状态 (Other)", other);
+  }
+
+  const boardPath = path.join(ROOT, "tasks", "BOARD.md");
+  fs.writeFileSync(boardPath, lines.join("\n"), "utf8");
+  return { boardPath, active: states.length, archived: archivedCount };
+}
+
+function cmdActive() {
+  const rows = listActiveTaskStates().map((s) => ({
+    task_id: s.task_id,
+    project_slug: s.project_slug,
+    priority: s.priority || null,
+    phase: s.phase,
+    title: s.title,
+    pr_url: s.pull_request?.url || null,
+    pull_requests: s.pull_requests || [],
+    head_sha: s.pull_request?.head_sha || null,
+    next_step: s.next_step || null,
+    updated_at: s.updated_at,
+  }));
+  console.log(JSON.stringify(rows, null, 2));
+}
+
+function cmdBoard() {
+  const res = rebuildBoard();
+  console.log(JSON.stringify({ ok: true, board: path.relative(ROOT, res.boardPath), active: res.active, archived: res.archived }, null, 2));
+}
+
+function parseTaskFlags(rawArgs) {
+  const positional = [];
+  const opts = { prs: [] };
+  const requireVal = (flag, idx) => {
+    if (idx >= rawArgs.length) {
+      fail(`Missing value for flag "${flag}"`);
+    }
+    return rawArgs[idx];
+  };
+  for (let i = 0; i < rawArgs.length; i++) {
+    const a = rawArgs[i];
+    if (a === "--") {
+      positional.push(...rawArgs.slice(i + 1));
+      break;
+    }
+    if (a === "--priority") opts.priority = requireVal(a, ++i);
+    else if (a === "--phase") opts.phase = requireVal(a, ++i);
+    else if (a === "--next" || a === "--next-step") opts.next = requireVal(a, ++i);
+    else if (a === "--pr") opts.prs.push(requireVal(a, ++i));
+    else if (a.startsWith("--")) {
+      fail(`Unknown flag "${a}". Allowed: --priority | --phase | --next | --next-step | --pr`);
+    } else {
+      positional.push(a);
+    }
+  }
+  return { positional, opts };
+}
+
+function cmdInitTask(args) {
+  const { positional, opts } = parseTaskFlags(args);
+  const [taskId, projectSlug, ...titleParts] = positional;
+  const title = titleParts.join(" ").trim();
+  if (!taskId || !projectSlug || !title) {
+    fail("Usage: zstack init-task <task-id> <project-slug> <title> [--priority P0|P1|P2] [--phase <phase>] [--pr <url>] [--next|--next-step <text>]");
+  }
+  if (!/^[a-z0-9][a-z0-9-_]{2,80}$/.test(taskId)) {
+    fail(`Invalid task-id "${taskId}". Use lowercase letters, digits, '-' or '_'.`);
+  }
+  const { mergePolicy } = readProjectMergePolicy(projectSlug);
+  const dir = taskDir(taskId);
+  if (fs.existsSync(dir)) {
+    fail(`Task directory already exists: ${dir}`);
+  }
+  fs.mkdirSync(path.join(dir, "receipts"), { recursive: true });
+
+  const ts = nowIso();
+  const state = {
+    schema_version: 1,
+    task_id: taskId,
+    project_slug: projectSlug,
+    title,
+    priority: opts.priority || "P1",
+    phase: opts.phase || "intake",
+    next_step: opts.next || null,
+    created_at: ts,
+    updated_at: ts,
+    threads: {
+      implementer: null,
+      reviewers: [],
+      investigators: [],
+      merger: null,
+    },
+    pull_request: opts.prs.length === 1 ? { url: opts.prs[0], head_sha: null } : null,
+    pull_requests: opts.prs,
+    gates: {
+      independent_review_pass: {
+        satisfied: false,
+        verified_head_sha: null,
+        reviewer_thread_id: null,
+        receipt_path: null,
+      },
+      merge_authorization: {
+        policy: mergePolicy,
+        approved: false,
+        approved_by: null,
+        approved_head_sha: null,
+        approved_at: null,
+      },
+      deploy_authorization: {
+        policy: "forbidden_by_default",
+        requested: false,
+        approved: false,
+      },
+    },
+    idempotency_keys: {},
+    open_risks: [],
+  };
+
+  fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify(state, null, 2) + "\n", "utf8");
+  appendEventRecord(taskId, "task_initialized", { project_slug: projectSlug, title, priority: state.priority, phase: state.phase, merge_policy: mergePolicy });
+  rebuildBoard();
+  console.log(JSON.stringify({ ok: true, task_id: taskId, path: path.join(dir, "state.json") }, null, 2));
+}
+
+function cmdSetPhase(args) {
+  const { positional, opts } = parseTaskFlags(args);
+  const [taskId, phase] = positional;
+  if (!taskId || !phase) {
+    fail("Usage: zstack set-phase <task-id> <phase> [--next|--next-step <text>] [--pr <url>] [--priority P0|P1|P2]");
+  }
+  const { statePath, state } = readTaskState(taskId);
+  const prevPhase = state.phase;
+  state.phase = phase;
+  if (opts.next !== undefined) state.next_step = opts.next;
+  if (opts.priority !== undefined) state.priority = opts.priority;
+  if (opts.prs.length > 0) {
+    const existing = Array.isArray(state.pull_requests) ? state.pull_requests : [];
+    state.pull_requests = [...new Set([...existing, ...opts.prs])];
+    if (!state.pull_request && state.pull_requests.length === 1) {
+      state.pull_request = { url: state.pull_requests[0], head_sha: null };
+    }
+  }
+  writeTaskState(statePath, state);
+  appendEventRecord(taskId, "phase_updated", { from: prevPhase, to: phase, next_step: state.next_step });
+  rebuildBoard();
+  console.log(JSON.stringify({ ok: true, task_id: taskId, from: prevPhase, to: phase }, null, 2));
+}
+
+function cmdBindThread(args) {
+  const positional = [];
+  const opts = {};
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--provider") opts.provider = args[++i];
+    else if (a === "--model") opts.model = args[++i];
+    else if (a === "--note") opts.note = args[++i];
+    else positional.push(a);
+  }
+  const [taskId, role, threadId] = positional;
+  const usage = "Usage: zstack bind-thread <task-id> <role> <thread-id> [--provider <provider>] [--model <model>] [--note <text>]";
+  if (!taskId || !role || !threadId) {
+    fail(usage);
+  }
+  const allowedRoles = new Set(["implementer", "reviewer", "investigator", "merger"]);
+  if (!allowedRoles.has(role)) {
+    fail(`Invalid role "${role}". Allowed: implementer | reviewer | investigator | merger`);
+  }
+
+  const { statePath, state } = readTaskState(taskId);
+  if (!state.threads || typeof state.threads !== "object") {
+    state.threads = { implementer: null, reviewers: [], investigators: [], merger: null };
+  }
+
+  const ts = nowIso();
+  const buildRecord = (existing) => {
+    const base = existing && existing.thread_id === threadId ? { ...existing } : {};
+    base.thread_id = threadId;
+    if (opts.provider !== undefined) base.provider = opts.provider;
+    if (opts.model !== undefined) base.model = opts.model;
+    if (opts.note !== undefined) base.note = opts.note;
+    base.bound_at = ts;
+    return base;
+  };
+
+  let record;
+  let updatedExisting = false;
+  if (role === "implementer" || role === "merger") {
+    updatedExisting = Boolean(state.threads[role] && state.threads[role].thread_id === threadId);
+    record = buildRecord(state.threads[role]);
+    state.threads[role] = record;
+  } else {
+    const listKey = role === "reviewer" ? "reviewers" : "investigators";
+    if (!Array.isArray(state.threads[listKey])) state.threads[listKey] = [];
+    const idx = state.threads[listKey].findIndex((item) => item && item.thread_id === threadId);
+    if (idx >= 0) {
+      updatedExisting = true;
+      record = buildRecord(state.threads[listKey][idx]);
+      state.threads[listKey][idx] = record;
+    } else {
+      record = buildRecord(null);
+      state.threads[listKey].push(record);
+    }
+  }
+
+  writeTaskState(statePath, state);
+  const eventPayload = { role, thread_id: threadId };
+  if (opts.provider !== undefined) eventPayload.provider = opts.provider;
+  if (opts.model !== undefined) eventPayload.model = opts.model;
+  if (opts.note !== undefined) eventPayload.note = opts.note;
+  appendEventRecord(taskId, "thread_bound", eventPayload);
+  rebuildBoard();
+  console.log(JSON.stringify({ ok: true, task_id: taskId, role, thread_id: threadId, updated_existing: updatedExisting, record }, null, 2));
+}
+
+function cmdArchiveTask(args) {
+  const [taskId, ...reasonParts] = args;
+  const reason = reasonParts.join(" ").trim() || "completed";
+  if (!taskId) {
+    fail("Usage: zstack archive-task <task-id> [reason]");
+  }
+  const { statePath, state } = readTaskState(taskId);
+  state.phase = "archived";
+  state.archived_at = nowIso();
+  state.archive_reason = reason;
+  writeTaskState(statePath, state);
+  appendEventRecord(taskId, "task_archived", { reason });
+
+  const monthDir = path.join(ROOT, "tasks", "archive", todayStr().slice(0, 7));
+  fs.mkdirSync(monthDir, { recursive: true });
+  const destDir = path.join(monthDir, taskId);
+  if (fs.existsSync(destDir)) {
+    fail(`Archive destination already exists: ${destDir}`);
+  }
+  fs.renameSync(taskDir(taskId), destDir);
+  rebuildBoard();
+  console.log(JSON.stringify({ ok: true, task_id: taskId, archived_to: path.relative(ROOT, destDir) }, null, 2));
+}
+
+function cmdNextRequestId(args) {
+  const [taskId, step, key] = args;
+  if (!taskId || !step || !key) {
+    fail("Usage: zstack next-request-id <task-id> <step> <key>");
+  }
+  const { statePath, state } = readTaskState(taskId);
+  const lookupKey = `${step}:${key}`;
+  if (state.idempotency_keys[lookupKey]) {
+    console.log(
+      JSON.stringify({
+        client_request_id: state.idempotency_keys[lookupKey],
+        reused: true,
+      })
+    );
+    return;
+  }
+  const reqId = `${taskId}:${step}:${key}:1`;
+  state.idempotency_keys[lookupKey] = reqId;
+  writeTaskState(statePath, state);
+  appendEventRecord(taskId, "idempotency_key_issued", { lookup_key: lookupKey, client_request_id: reqId });
+  console.log(JSON.stringify({ client_request_id: reqId, reused: false }));
+}
+
+function cmdAppendEvent(args) {
+  const [taskId, type, payloadStr] = args;
+  if (!taskId || !type) {
+    fail("Usage: zstack append-event <task-id> <type> [json-payload]");
+  }
+  readTaskState(taskId);
+  let extra = {};
+  if (payloadStr) {
+    try {
+      extra = JSON.parse(payloadStr);
+    } catch {
+      fail("Invalid JSON payload for append-event");
+    }
+  }
+  const entry = appendEventRecord(taskId, type, extra);
+  console.log(JSON.stringify(entry));
+}
+
+function cmdCheckReceipt(args) {
+  const taskId = args[0];
+  const receiptPath = args[1];
+  if (!taskId || !receiptPath) {
+    fail("Usage: zstack check-receipt <task-id> <receipt-path> [--pinned-sha <sha>] [--role <role>]");
+  }
+  let pinnedSha = null;
+  let expectedRole = null;
+  for (let i = 2; i < args.length; i++) {
+    if (args[i] === "--pinned-sha") pinnedSha = args[++i];
+    else if (args[i] === "--role") expectedRole = args[++i];
+  }
+
+  readTaskState(taskId);
+  const absReceipt = path.isAbsolute(receiptPath) ? receiptPath : path.resolve(ROOT, receiptPath);
+  if (!fs.existsSync(absReceipt)) fail(`Receipt file not found: ${absReceipt}`);
+
+  let receipt;
+  try {
+    receipt = JSON.parse(fs.readFileSync(absReceipt, "utf8"));
+  } catch (e) {
+    fail(`Invalid JSON in receipt: ${e.message}`);
+  }
+
+  const errors = [];
+  const requiredTop = [
+    "contract_version",
+    "task_id",
+    "step_id",
+    "role",
+    "status",
+    "git_evidence",
+    "checks",
+    "findings",
+    "open_risks",
+    "next_recommendation",
+  ];
+  for (const field of requiredTop) {
+    if (!(field in receipt)) errors.push(`Missing required field: ${field}`);
+  }
+
+  if (receipt.contract_version !== "1.0") errors.push(`Expected contract_version "1.0", got "${receipt.contract_version}"`);
+  if (receipt.task_id !== taskId) errors.push(`Receipt task_id "${receipt.task_id}" does not match "${taskId}"`);
+  if (expectedRole && receipt.role !== expectedRole) {
+    errors.push(`Receipt role "${receipt.role}" does not match expected "${expectedRole}"`);
+  }
+
+  const ge = receipt.git_evidence || {};
+  if (!ge.head_sha || typeof ge.head_sha !== "string") errors.push("Missing git_evidence.head_sha");
+  if (!ge.base_sha || typeof ge.base_sha !== "string") errors.push("Missing git_evidence.base_sha");
+  if (pinnedSha && ge.head_sha !== pinnedSha) {
+    errors.push(`Stale/mismatched SHA: receipt head_sha "${ge.head_sha}" !== pinned_sha "${pinnedSha}"`);
+  }
+
+  if (receipt.role === "reviewer") {
+    if (ge.working_tree_clean !== true) {
+      errors.push("Reviewer receipt must confirm git_evidence.working_tree_clean === true");
+    }
+  }
+
+  if (receipt.role === "investigator") {
+    const ee = receipt.environment_evidence;
+    if (!ee || ee.read_only_confirmed !== true || ee.mutations_performed !== 0) {
+      errors.push("Investigator receipt must confirm environment_evidence.read_only_confirmed === true and mutations_performed === 0");
+    }
+  }
+
+  if (receipt.status === "pass") {
+    const blockingFindings = (receipt.findings || []).filter(
+      (f) => f.status === "open" && (f.severity === "blocker" || f.severity === "major")
+    );
+    if (blockingFindings.length > 0) {
+      errors.push(`Status is "pass" but ${blockingFindings.length} open blocker/major findings exist`);
+    }
+    const failedChecks = (receipt.checks || []).filter((c) => c.result === "fail" || (typeof c.failed === "number" && c.failed > 0));
+    if (failedChecks.length > 0) {
+      errors.push(`Status is "pass" but ${failedChecks.length} checks failed`);
+    }
+  }
+
+  if (errors.length > 0) {
+    console.log(JSON.stringify({ ok: false, errors }, null, 2));
+    process.exit(1);
+  }
+  console.log(JSON.stringify({ ok: true, task_id: taskId, role: receipt.role, status: receipt.status, head_sha: ge.head_sha }, null, 2));
+}
+
+function cmdMergeGate(args) {
+  const [taskId] = args;
+  if (!taskId) fail("Usage: zstack merge-gate <task-id>");
+
+  const { state } = readTaskState(taskId);
+  const { mergePolicy } = readProjectMergePolicy(state.project_slug);
+  const errors = [];
+
+  const pr = state.pull_request;
+  if (!pr || !pr.url || !pr.head_sha) {
+    errors.push("Missing pull_request.url or pull_request.head_sha in state.json");
+  }
+
+  const revGate = state.gates?.independent_review_pass;
+  if (!revGate || revGate.satisfied !== true) {
+    errors.push("Independent review gate is not satisfied");
+  } else {
+    if (pr && revGate.verified_head_sha !== pr.head_sha) {
+      errors.push(`Reviewed SHA (${revGate.verified_head_sha}) !== current PR head_sha (${pr.head_sha})`);
+    }
+    const implThreadId = state.threads?.implementer?.thread_id;
+    if (!revGate.reviewer_thread_id) {
+      errors.push("Missing reviewer_thread_id on independent_review_pass gate");
+    } else if (implThreadId && revGate.reviewer_thread_id === implThreadId) {
+      errors.push("Role separation violation: reviewer_thread_id equals implementer.thread_id");
+    }
+    if (!revGate.receipt_path) {
+      errors.push("Missing receipt_path on independent_review_pass gate");
+    } else {
+      const absReceipt = path.resolve(ROOT, revGate.receipt_path);
+      if (!fs.existsSync(absReceipt)) {
+        errors.push(`Referenced review receipt not found: ${revGate.receipt_path}`);
+      } else {
+        const receipt = JSON.parse(fs.readFileSync(absReceipt, "utf8"));
+        if (receipt.status !== "pass") errors.push(`Review receipt status is "${receipt.status}", expected "pass"`);
+        if (receipt.role !== "reviewer") errors.push(`Review receipt role is "${receipt.role}", expected "reviewer"`);
+        if (pr && receipt.git_evidence?.head_sha !== pr.head_sha) {
+          errors.push(`Review receipt head_sha (${receipt.git_evidence?.head_sha}) !== PR head_sha (${pr.head_sha})`);
+        }
+        const openBlocking = (receipt.findings || []).filter(
+          (f) => f.status === "open" && (f.severity === "blocker" || f.severity === "major")
+        );
+        if (openBlocking.length > 0) errors.push(`Review receipt still has ${openBlocking.length} open blocker/major findings`);
+      }
+    }
+  }
+
+  const mergeAuth = state.gates?.merge_authorization || {};
+  if (mergePolicy === "human_approval_required") {
+    if (mergeAuth.approved !== true || (pr && mergeAuth.approved_head_sha !== pr.head_sha)) {
+      errors.push("Project policy requires explicit human merge approval for current head_sha");
+    }
+  } else if (mergePolicy !== "auto_merge_on_gate_pass") {
+    errors.push(`Unsupported merge policy "${mergePolicy}"`);
+  }
+
+  if (errors.length > 0) {
+    console.log(JSON.stringify({ eligible: false, policy: mergePolicy, errors }, null, 2));
+    process.exit(1);
+  }
+  console.log(
+    JSON.stringify(
+      {
+        eligible: true,
+        policy: mergePolicy,
+        task_id: taskId,
+        pr_url: pr.url,
+        approved_head_sha: pr.head_sha,
+        reviewer_thread_id: revGate.reviewer_thread_id,
+      },
+      null,
+      2
+    )
+  );
+}
+
+const SECRET_RULES = [
+  { name: "GitHub PAT", re: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b/g },
+  { name: "GitHub Fine-Grained PAT", re: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g },
+  { name: "OpenAI / Anthropic API Key", re: /\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}\b/g },
+  { name: "AWS Access Key", re: /\bAKIA[0-9A-Z]{16}\b/g },
+  { name: "Private Key Block", re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/g },
+  { name: "Bearer Token", re: /\bBearer\s+[A-Za-z0-9._-]{24,}\b/g },
+  { name: "Mainland China Mobile PII", re: /(?:(?<![0-9A-Za-z])|(?<=\+86))1[3-9]\d{9}(?![0-9A-Za-z])/g },
+];
+
+function walkFiles(dir, out = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if ([".git", ".zstack-cache", "node_modules"].includes(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) continue;
+    if (entry.isDirectory()) walkFiles(full, out);
+    else out.push(full);
+  }
+  return out;
+}
+
+function cmdCheckSecrets(args) {
+  const targets = [];
+  if (args.length > 0) {
+    for (const p of args) {
+      const abs = path.isAbsolute(p) ? p : path.resolve(ROOT, p);
+      if (!fs.existsSync(abs)) continue;
+      if (fs.statSync(abs).isDirectory()) walkFiles(abs, targets);
+      else targets.push(abs);
+    }
+  } else {
+    walkFiles(ROOT, targets);
+  }
+
+  const hits = [];
+  for (const file of targets) {
+    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    const rel = path.relative(ROOT, file);
+    if (rel === "scripts/zstack") continue; // skip scanner regex definitions itself
+    const content = fs.readFileSync(file, "utf8");
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      for (const rule of SECRET_RULES) {
+        rule.re.lastIndex = 0;
+        if (rule.re.test(lines[i])) {
+          hits.push({ file: rel.startsWith("..") ? file : rel, line: i + 1, rule: rule.name });
+        }
+      }
+    }
+  }
+
+  if (hits.length > 0) {
+    console.log(JSON.stringify({ ok: false, hits }, null, 2));
+    process.exit(1);
+  }
+  console.log(JSON.stringify({ ok: true, scanned_files: targets.length, hits: [] }, null, 2));
+}
+
+function parseMemoryFile(filePath) {
+  const rel = path.relative(ROOT, filePath);
+  const text = fs.readFileSync(filePath, "utf8");
+  const blocks = [...text.matchAll(/```yaml\n([\s\S]*?)```/g)];
+  const entries = [];
+  const todayMs = Date.parse(todayStr());
+
+  for (const match of blocks) {
+    const raw = match[1];
+    const get = (k) => {
+      const m = raw.match(new RegExp(`^${k}:\\s*(.+)$`, "m"));
+      return m ? m[1].trim().replace(/^["']|["']$/g, "") : null;
+    };
+    const id = get("id");
+    if (!id) continue;
+    const verifiedAt = get("verified_at");
+    const ttlDays = Number(get("ttl_days") || 90);
+    let status = get("status") || "active";
+    if (status === "active" && verifiedAt) {
+      const ageDays = Math.floor((todayMs - Date.parse(verifiedAt)) / 86400000);
+      if (ageDays > ttlDays) status = "stale";
+    }
+    entries.push({
+      id,
+      scope: get("scope") || "global",
+      kind: get("kind") || "fact",
+      confidence: get("confidence") || "observed",
+      status,
+      verified_at: verifiedAt || "-",
+      summary: get("summary") || "",
+      file: rel,
+    });
+  }
+  return entries;
+}
+
+function cmdReindex() {
+  const memDir = path.join(ROOT, "memory");
+  const files = [];
+  const pref = path.join(memDir, "preferences.md");
+  if (fs.existsSync(pref)) files.push(pref);
+  const factsDir = path.join(memDir, "facts");
+  if (fs.existsSync(factsDir)) {
+    for (const f of fs.readdirSync(factsDir).sort()) {
+      if (f.endsWith(".md")) files.push(path.join(factsDir, f));
+    }
+  }
+
+  const all = files.flatMap(parseMemoryFile);
+  const lines = [
+    "# Memory Index (Auto-generated by `./scripts/zstack reindex`)",
+    "",
+    `Last rebuilt: ${todayStr()} · Total entries: ${all.length}`,
+    "",
+    "| ID | Scope | Kind | Confidence | Status | Verified | Summary | Source File |",
+    "|---|---|---|---|---|---|---|---|",
+  ];
+  for (const e of all) {
+    lines.push(
+      `| \`${e.id}\` | \`${e.scope}\` | ${e.kind} | ${e.confidence} | \`${e.status}\` | ${e.verified_at} | ${e.summary.replace(/\|/g, "\\|")} | \`${e.file}\` |`
+    );
+  }
+  lines.push("");
+
+  const indexPath = path.join(memDir, "INDEX.md");
+  fs.writeFileSync(indexPath, lines.join("\n"), "utf8");
+  console.log(JSON.stringify({ ok: true, index: path.relative(ROOT, indexPath), count: all.length }, null, 2));
+}
+
+const [cmd, ...rest] = process.argv.slice(2);
+switch (cmd) {
+  case "active":
+    cmdActive();
+    break;
+  case "board":
+    cmdBoard();
+    break;
+  case "init-task":
+    cmdInitTask(rest);
+    break;
+  case "set-phase":
+    cmdSetPhase(rest);
+    break;
+  case "bind-thread":
+    cmdBindThread(rest);
+    break;
+  case "archive-task":
+    cmdArchiveTask(rest);
+    break;
+  case "next-request-id":
+    cmdNextRequestId(rest);
+    break;
+  case "append-event":
+    cmdAppendEvent(rest);
+    break;
+  case "check-receipt":
+    cmdCheckReceipt(rest);
+    break;
+  case "merge-gate":
+    cmdMergeGate(rest);
+    break;
+  case "check-secrets":
+    cmdCheckSecrets(rest);
+    break;
+  case "reindex":
+    cmdReindex();
+    break;
+  case "sync-template": {
+    const { runSyncTemplate } = await import("./sync-template.mjs");
+    await runSyncTemplate(rest, { root: ROOT, secretRules: SECRET_RULES });
+    break;
+  }
+  default:
+    fail("Unknown command. Available: active | board | init-task | set-phase | bind-thread | archive-task | next-request-id | append-event | check-receipt | merge-gate | check-secrets | reindex | sync-template");
+}
