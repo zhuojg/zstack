@@ -7,16 +7,19 @@ description: After Implementer fixes review findings and pushes a new SHA, dispa
 
 ## Steps
 
-1. **Check Round Budget**
-   - Inspect `threads.reviewers.length` in `state.json`. If already `>= 3` rounds without convergence, stop immediately, set `phase: "needs_human"`, and escalate with open findings.
-2. **Confirm New Remote SHA**
+1. **Check Round Budget & Root-Cause Convergence**
+   - Inspect `threads.reviewers.length` in `state.json`. If already `>= 3` rounds without convergence, stop immediately, set `phase: "needs_human"`, and escalate with open findings (Options + Recommendation).
+   - If the **same root cause** has failed to converge after **2 rounds** of local patches, instruct Implementer to perform a clean root-cause refactor rather than stacking another local patch.
+2. **Confirm New Remote SHA (and Timeline on User Signal)**
    - Verify `new_head_sha !== previous_head_sha`. Record `pr_head_updated` event.
+   - If the user reports the PR was updated while cached `head_sha` appears unchanged, re-fetch the full commits, reviews, and comments timeline before replying.
 3. **Dispatch Targeted Incremental Reviewer**
    - Obtain idempotency key via `./scripts/zstack next-request-id <task-id> reverify-r<round> sha-<short-sha>`.
-   - Launch a **fresh** independent Reviewer thread (`roles/reviewer.md`).
+   - Launch a **fresh** independent Reviewer thread (`roles/reviewer.md`) — never reuse an earlier review thread or the Implementer's model. For minor round-2+ incremental checks, `codex / gpt-6.2-astra` may use `reasoningEffort: "medium"`.
    - Restrict scope in the Brief:
      - `unresolved_items_only`: exact list of previously `open` finding IDs and summaries.
      - Diff window: `<previous_head_sha>..<new_head_sha>` regression check only (do not re-litigate already closed items unless touched by the new diff).
+     - Independently verify any author claim that a failing check is "already broken on `main`".
    - Pass `schemas/worker-receipt.schema.json` as `outputSchema`.
 4. **Verify & Advance**
    - Save receipt and run `./scripts/zstack check-receipt <task-id> <receipt-path> --pinned-sha <new_head_sha> --role reviewer`.

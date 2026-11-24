@@ -5,9 +5,9 @@
  * Commands:
  *   active
  *   board
- *   init-task <task-id> <project-slug> <title> [--priority P0|P1|P2] [--phase <phase>] [--pr <url>] [--next|--next-step <text>]
- *   set-phase <task-id> <phase> [--next|--next-step <text>] [--pr <url>] [--priority P0|P1|P2]
- *   bind-thread <task-id> <role> <thread-id> [--provider <provider>] [--model <model>] [--note <text>]
+ *   init-task <task-id> <project-slug> <title> [--priority P0|P1|P2] [--phase <phase>] [--kind feature|bug|release|review] [--severity P0|P1|P2|P3] [--owner me|team] [--bucket must|maybe|team] [--source <text>] [--depends-on <id,id>] [--has-migration] [--release-id <id>] [--lease-minutes <n>] [--pr <url>] [--next|--next-step <text>]
+ *   set-phase <task-id> <phase> [--next|--next-step <text>] [--pr <url>] [--priority P0|P1|P2] [--kind <kind>] [--severity <sev>] [--owner <owner>] [--bucket <bucket>] [--depends-on <id,id>] [--has-migration]
+ *   bind-thread <task-id> <role> <thread-id> [provider] [model] [note] (named flags also supported)
  *   archive-task <task-id> [reason]
  *   next-request-id <task-id> <step> <key>
  *   append-event <task-id> <type> [json-payload]
@@ -15,12 +15,34 @@
  *   merge-gate <task-id>
  *   check-secrets [paths...]
  *   reindex
+ *   serve [--port 4390] [--host 127.0.0.1]
+ *   daemon <install|uninstall|status|restart|logs>
  *   sync-template [--dry-run] [--out <dir>] [--push] [--remote <url_or_name>]
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  ALLOWED_BUCKETS,
+  ALLOWED_KINDS,
+  ALLOWED_OWNERS,
+  ALLOWED_PHASES,
+  ALLOWED_SEVERITIES,
+  DEFAULT_LEASE_MINUTES,
+  archiveTaskDirectory,
+  defaultReleaseChecklist,
+  detectMigration,
+  getPrUrls,
+  inferBucket,
+  inferKind,
+  inferOwner,
+  inferSeverity,
+  listActiveTaskStates,
+  nowIso,
+  rebuildBoard,
+  todayStr,
+} from "./board-core.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,32 +51,6 @@ const ROOT = path.resolve(__dirname, "..");
 function fail(msg) {
   console.error(`[zstack] ERROR: ${msg}`);
   process.exit(1);
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function formatShanghaiTime(input, { withOffset = false } = {}) {
-  const date = input ? new Date(input) : new Date();
-  if (Number.isNaN(date.getTime())) return "-";
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const get = (type) => parts.find((p) => p.type === type)?.value || "00";
-  const hour = get("hour") === "24" ? "00" : get("hour");
-  const base = `${get("year")}-${get("month")}-${get("day")} ${hour}:${get("minute")}`;
-  return withOffset ? `${base} +08:00` : base;
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function taskDir(taskId) {
@@ -95,128 +91,52 @@ function readProjectMergePolicy(slug) {
   };
 }
 
-function listActiveTaskStates() {
-  const activeRoot = path.join(ROOT, "tasks", "active");
-  if (!fs.existsSync(activeRoot)) return [];
-  const rows = [];
-  for (const entry of fs.readdirSync(activeRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const statePath = path.join(activeRoot, entry.name, "state.json");
-    if (!fs.existsSync(statePath)) continue;
-    rows.push(JSON.parse(fs.readFileSync(statePath, "utf8")));
-  }
-  rows.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
-  return rows;
-}
-
-function countArchivedTasks() {
-  const archiveRoot = path.join(ROOT, "tasks", "archive");
-  if (!fs.existsSync(archiveRoot)) return 0;
-  let count = 0;
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (fs.existsSync(path.join(full, "state.json"))) count++;
-        else walk(full);
-      }
-    }
-  };
-  walk(archiveRoot);
-  return count;
-}
-
-function formatPrLinks(state) {
-  const prs = Array.isArray(state.pull_requests) && state.pull_requests.length > 0
-    ? state.pull_requests
-    : state.pull_request?.url
-      ? [state.pull_request.url]
-      : [];
-  if (prs.length === 0) return "-";
-  return prs
-    .map((u) => {
-      const m = String(u).match(/\/pull\/(\d+)$/);
-      return m ? `[#${m[1]}](${u})` : u;
-    })
-    .join(", ");
-}
-
-function rebuildBoard() {
-  const states = listActiveTaskStates();
-  const archivedCount = countArchivedTasks();
-  const phaseOrder = [
-    { key: "in_progress", label: "开发中 (In Progress)" },
-    { key: "in_review", label: "复审中 (In Review)" },
-    { key: "blocked", label: "阻塞 / 待拍板 (Blocked)" },
-    { key: "intake", label: "待开工 (Intake)" },
-    { key: "merged_pending_release", label: "已合入待发布 / 待验收 (Merged Pending Release)" },
-  ];
-  const knownKeys = new Set(phaseOrder.map((p) => p.key));
-  const lines = [
-    "# Local Task Board (Auto-generated by `./scripts/zstack board`)",
-    "",
-    `> Scope: 仅记录面向代码的开发功能/修复任务（常规集群升级、运维巡检等不建卡）。`,
-    `> Last rebuilt: ${formatShanghaiTime(new Date(), { withOffset: true })} · Active: ${states.length} · Archived: ${archivedCount} · Backlog: [BACKLOG.md](./BACKLOG.md)`,
-    "",
-  ];
-
-  const renderSection = (label, items) => {
-    lines.push(`## ${label} (${items.length})`, "");
-    if (items.length === 0) {
-      lines.push("_空_", "");
-      return;
-    }
-    lines.push("| Task ID | Project | Pri | Title | PRs | Next Step | Updated |");
-    lines.push("|---|---|---|---|---|---|---|");
-    for (const s of items) {
-      const pri = s.priority || "-";
-      const next = (s.next_step || "-").replace(/\|/g, "\\|").replace(/\n/g, " ");
-      const title = (s.title || "-").replace(/\|/g, "\\|");
-      const upd = s.updated_at ? formatShanghaiTime(s.updated_at) : "-";
-      lines.push(
-        `| [\`${s.task_id}\`](./active/${s.task_id}/state.json) | \`${s.project_slug}\` | ${pri} | ${title} | ${formatPrLinks(s)} | ${next} | ${upd} |`
-      );
-    }
-    lines.push("");
-  };
-
-  for (const p of phaseOrder) {
-    renderSection(p.label, states.filter((s) => s.phase === p.key));
-  }
-  const other = states.filter((s) => !knownKeys.has(s.phase));
-  if (other.length > 0) {
-    renderSection("其他状态 (Other)", other);
-  }
-
-  const boardPath = path.join(ROOT, "tasks", "BOARD.md");
-  fs.writeFileSync(boardPath, lines.join("\n"), "utf8");
-  return { boardPath, active: states.length, archived: archivedCount };
-}
-
 function cmdActive() {
-  const rows = listActiveTaskStates().map((s) => ({
-    task_id: s.task_id,
-    project_slug: s.project_slug,
-    priority: s.priority || null,
-    phase: s.phase,
-    title: s.title,
-    pr_url: s.pull_request?.url || null,
-    pull_requests: s.pull_requests || [],
-    head_sha: s.pull_request?.head_sha || null,
-    next_step: s.next_step || null,
-    updated_at: s.updated_at,
-  }));
+  const rows = listActiveTaskStates(ROOT).map((s) => {
+    const kind = inferKind(s);
+    return {
+      task_id: s.task_id,
+      project_slug: s.project_slug,
+      kind,
+      priority: s.priority || null,
+      severity: inferSeverity(s, kind),
+      owner: inferOwner(s),
+      bucket: s.phase === "backlog" ? inferBucket(s) : s.bucket || null,
+      phase: s.phase,
+      title: s.title,
+      pr_url: s.pull_request?.url || null,
+      pull_requests: s.pull_requests || [],
+      head_sha: s.pull_request?.head_sha || null,
+      depends_on: Array.isArray(s.depends_on) ? s.depends_on : [],
+      has_migration: detectMigration(s),
+      next_step: s.next_step || null,
+      updated_at: s.updated_at,
+    };
+  });
   console.log(JSON.stringify(rows, null, 2));
 }
 
 function cmdBoard() {
-  const res = rebuildBoard();
-  console.log(JSON.stringify({ ok: true, board: path.relative(ROOT, res.boardPath), active: res.active, archived: res.archived }, null, 2));
+  const res = rebuildBoard(ROOT);
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        board: path.relative(ROOT, res.boardPath),
+        backlog: path.relative(ROOT, res.backlogPath),
+        active: res.active,
+        backlog_count: res.backlog,
+        archived: res.archived,
+      },
+      null,
+      2
+    )
+  );
 }
 
 function parseTaskFlags(rawArgs) {
   const positional = [];
-  const opts = { prs: [] };
+  const opts = { prs: [], dependsOn: [] };
   const requireVal = (flag, idx) => {
     if (idx >= rawArgs.length) {
       fail(`Missing value for flag "${flag}"`);
@@ -231,10 +151,31 @@ function parseTaskFlags(rawArgs) {
     }
     if (a === "--priority") opts.priority = requireVal(a, ++i);
     else if (a === "--phase") opts.phase = requireVal(a, ++i);
-    else if (a === "--next" || a === "--next-step") opts.next = requireVal(a, ++i);
+    else if (a === "--kind") opts.kind = requireVal(a, ++i);
+    else if (a === "--severity") opts.severity = requireVal(a, ++i);
+    else if (a === "--owner") opts.owner = requireVal(a, ++i);
+    else if (a === "--bucket") opts.bucket = requireVal(a, ++i);
+    else if (a === "--source") opts.source = requireVal(a, ++i);
+    else if (a === "--release-id") opts.releaseId = requireVal(a, ++i);
+    else if (a === "--lease-minutes") opts.leaseMinutes = Number(requireVal(a, ++i));
+    else if (a === "--depends-on") {
+      const val = requireVal(a, ++i);
+      const parts = val.split(",").map((x) => x.trim()).filter(Boolean);
+      opts.dependsOn.push(...parts);
+    } else if (a === "--has-migration") {
+      const next = rawArgs[i + 1];
+      if (next === "true" || next === "false") {
+        opts.hasMigration = next === "true";
+        i++;
+      } else {
+        opts.hasMigration = true;
+      }
+    } else if (a === "--next" || a === "--next-step") opts.next = requireVal(a, ++i);
     else if (a === "--pr") opts.prs.push(requireVal(a, ++i));
     else if (a.startsWith("--")) {
-      fail(`Unknown flag "${a}". Allowed: --priority | --phase | --next | --next-step | --pr`);
+      fail(
+        `Unknown flag "${a}". Allowed: --priority | --phase | --kind | --severity | --owner | --bucket | --source | --depends-on | --has-migration | --release-id | --lease-minutes | --next | --next-step | --pr`
+      );
     } else {
       positional.push(a);
     }
@@ -242,12 +183,36 @@ function parseTaskFlags(rawArgs) {
   return { positional, opts };
 }
 
+function validateTaskOpts(opts) {
+  if (opts.kind !== undefined && !ALLOWED_KINDS.has(opts.kind)) {
+    fail(`Invalid --kind "${opts.kind}". Allowed: feature | bug | release | review`);
+  }
+  if (opts.severity !== undefined && !ALLOWED_SEVERITIES.has(opts.severity)) {
+    fail(`Invalid --severity "${opts.severity}". Allowed: P0 | P1 | P2 | P3`);
+  }
+  if (opts.owner !== undefined && !ALLOWED_OWNERS.has(opts.owner)) {
+    fail(`Invalid --owner "${opts.owner}". Allowed: me | team`);
+  }
+  if (opts.bucket !== undefined && !ALLOWED_BUCKETS.has(opts.bucket)) {
+    fail(`Invalid --bucket "${opts.bucket}". Allowed: must | maybe | team`);
+  }
+  if (opts.phase !== undefined && !ALLOWED_PHASES.has(opts.phase)) {
+    fail(`Invalid --phase "${opts.phase}". Allowed: ${[...ALLOWED_PHASES].join(" | ")}`);
+  }
+  if (opts.leaseMinutes !== undefined && (!Number.isFinite(opts.leaseMinutes) || opts.leaseMinutes <= 0)) {
+    fail(`Invalid --lease-minutes "${opts.leaseMinutes}". Expected positive number.`);
+  }
+}
+
 function cmdInitTask(args) {
   const { positional, opts } = parseTaskFlags(args);
+  validateTaskOpts(opts);
   const [taskId, projectSlug, ...titleParts] = positional;
   const title = titleParts.join(" ").trim();
   if (!taskId || !projectSlug || !title) {
-    fail("Usage: zstack init-task <task-id> <project-slug> <title> [--priority P0|P1|P2] [--phase <phase>] [--pr <url>] [--next|--next-step <text>]");
+    fail(
+      "Usage: zstack init-task <task-id> <project-slug> <title> [--priority P0|P1|P2] [--phase <phase>] [--kind feature|bug|release|review] [--severity P0|P1|P2|P3] [--owner me|team] [--bucket must|maybe|team] [--source <text>] [--depends-on <id,id>] [--has-migration] [--pr <url>] [--next|--next-step <text>]"
+    );
   }
   if (!/^[a-z0-9][a-z0-9-_]{2,80}$/.test(taskId)) {
     fail(`Invalid task-id "${taskId}". Use lowercase letters, digits, '-' or '_'.`);
@@ -260,13 +225,30 @@ function cmdInitTask(args) {
   fs.mkdirSync(path.join(dir, "receipts"), { recursive: true });
 
   const ts = nowIso();
+  const kind = opts.kind || "feature";
+  const phase = opts.phase || "intake";
+  const severity = opts.severity || (kind === "bug" ? (ALLOWED_SEVERITIES.has(opts.priority) ? opts.priority : "P1") : null);
+  const priority = opts.priority || (severity ? (severity === "P3" ? "P2" : severity) : "P1");
+  const bucket = opts.bucket || (phase === "backlog" ? (opts.owner === "team" ? "team" : "must") : null);
+  const owner = opts.owner || (bucket === "team" ? "team" : "me");
+
   const state = {
     schema_version: 1,
     task_id: taskId,
     project_slug: projectSlug,
+    kind,
     title,
-    priority: opts.priority || "P1",
-    phase: opts.phase || "intake",
+    priority,
+    ...(severity ? { severity } : {}),
+    owner,
+    ...(bucket ? { bucket } : {}),
+    ...(opts.source ? { source: opts.source } : {}),
+    depends_on: [...new Set(opts.dependsOn)],
+    ...(opts.hasMigration !== undefined ? { has_migration: opts.hasMigration } : {}),
+    release_id: opts.releaseId || null,
+    ...(kind === "release" ? { checklist: defaultReleaseChecklist(projectSlug) } : {}),
+    lease_minutes: opts.leaseMinutes || DEFAULT_LEASE_MINUTES,
+    phase,
     next_step: opts.next || null,
     created_at: ts,
     updated_at: ts,
@@ -303,8 +285,18 @@ function cmdInitTask(args) {
   };
 
   fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify(state, null, 2) + "\n", "utf8");
-  appendEventRecord(taskId, "task_initialized", { project_slug: projectSlug, title, priority: state.priority, phase: state.phase, merge_policy: mergePolicy });
-  rebuildBoard();
+  appendEventRecord(taskId, "task_initialized", {
+    project_slug: projectSlug,
+    kind,
+    title,
+    priority: state.priority,
+    ...(severity ? { severity } : {}),
+    owner,
+    ...(bucket ? { bucket } : {}),
+    phase: state.phase,
+    merge_policy: mergePolicy,
+  });
+  rebuildBoard(ROOT);
   console.log(JSON.stringify({ ok: true, task_id: taskId, path: path.join(dir, "state.json") }, null, 2));
 }
 
@@ -314,11 +306,26 @@ function cmdSetPhase(args) {
   if (!taskId || !phase) {
     fail("Usage: zstack set-phase <task-id> <phase> [--next|--next-step <text>] [--pr <url>] [--priority P0|P1|P2]");
   }
+  if (!ALLOWED_PHASES.has(phase)) {
+    fail(`Invalid phase "${phase}". Allowed: ${[...ALLOWED_PHASES].join(" | ")}`);
+  }
+  validateTaskOpts(opts);
   const { statePath, state } = readTaskState(taskId);
   const prevPhase = state.phase;
   state.phase = phase;
   if (opts.next !== undefined) state.next_step = opts.next;
   if (opts.priority !== undefined) state.priority = opts.priority;
+  if (opts.kind !== undefined) state.kind = opts.kind;
+  if (opts.severity !== undefined) state.severity = opts.severity;
+  if (opts.owner !== undefined) state.owner = opts.owner;
+  if (opts.bucket !== undefined) state.bucket = opts.bucket;
+  if (opts.source !== undefined) state.source = opts.source;
+  if (opts.releaseId !== undefined) state.release_id = opts.releaseId;
+  if (opts.hasMigration !== undefined) state.has_migration = opts.hasMigration;
+  if (opts.leaseMinutes !== undefined) state.lease_minutes = opts.leaseMinutes;
+  if (opts.dependsOn.length > 0) {
+    state.depends_on = [...new Set(opts.dependsOn)];
+  }
   if (opts.prs.length > 0) {
     const existing = Array.isArray(state.pull_requests) ? state.pull_requests : [];
     state.pull_requests = [...new Set([...existing, ...opts.prs])];
@@ -328,7 +335,7 @@ function cmdSetPhase(args) {
   }
   writeTaskState(statePath, state);
   appendEventRecord(taskId, "phase_updated", { from: prevPhase, to: phase, next_step: state.next_step });
-  rebuildBoard();
+  rebuildBoard(ROOT);
   console.log(JSON.stringify({ ok: true, task_id: taskId, from: prevPhase, to: phase }, null, 2));
 }
 
@@ -342,11 +349,14 @@ function cmdBindThread(args) {
     else if (a === "--note") opts.note = args[++i];
     else positional.push(a);
   }
-  const [taskId, role, threadId] = positional;
-  const usage = "Usage: zstack bind-thread <task-id> <role> <thread-id> [--provider <provider>] [--model <model>] [--note <text>]";
-  if (!taskId || !role || !threadId) {
+  const [taskId, role, threadId, provider, model, note] = positional;
+  const usage = "Usage: zstack bind-thread <task-id> <role> <thread-id> [provider] [model] [note] (or use --provider, --model, --note)";
+  if (!taskId || !role || !threadId || positional.length > 6) {
     fail(usage);
   }
+  opts.provider ??= provider;
+  opts.model ??= model;
+  opts.note ??= note;
   const allowedRoles = new Set(["implementer", "reviewer", "investigator", "merger"]);
   if (!allowedRoles.has(role)) {
     fail(`Invalid role "${role}". Allowed: implementer | reviewer | investigator | merger`);
@@ -394,7 +404,7 @@ function cmdBindThread(args) {
   if (opts.model !== undefined) eventPayload.model = opts.model;
   if (opts.note !== undefined) eventPayload.note = opts.note;
   appendEventRecord(taskId, "thread_bound", eventPayload);
-  rebuildBoard();
+  rebuildBoard(ROOT);
   console.log(JSON.stringify({ ok: true, task_id: taskId, role, thread_id: threadId, updated_existing: updatedExisting, record }, null, 2));
 }
 
@@ -404,22 +414,9 @@ function cmdArchiveTask(args) {
   if (!taskId) {
     fail("Usage: zstack archive-task <task-id> [reason]");
   }
-  const { statePath, state } = readTaskState(taskId);
-  state.phase = "archived";
-  state.archived_at = nowIso();
-  state.archive_reason = reason;
-  writeTaskState(statePath, state);
-  appendEventRecord(taskId, "task_archived", { reason });
-
-  const monthDir = path.join(ROOT, "tasks", "archive", todayStr().slice(0, 7));
-  fs.mkdirSync(monthDir, { recursive: true });
-  const destDir = path.join(monthDir, taskId);
-  if (fs.existsSync(destDir)) {
-    fail(`Archive destination already exists: ${destDir}`);
-  }
-  fs.renameSync(taskDir(taskId), destDir);
-  rebuildBoard();
-  console.log(JSON.stringify({ ok: true, task_id: taskId, archived_to: path.relative(ROOT, destDir) }, null, 2));
+  const result = archiveTaskDirectory(ROOT, taskId, reason);
+  rebuildBoard(ROOT);
+  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
 }
 
 function cmdNextRequestId(args) {
@@ -476,7 +473,7 @@ function cmdCheckReceipt(args) {
     else if (args[i] === "--role") expectedRole = args[++i];
   }
 
-  readTaskState(taskId);
+  const { statePath, state } = readTaskState(taskId);
   const absReceipt = path.isAbsolute(receiptPath) ? receiptPath : path.resolve(ROOT, receiptPath);
   if (!fs.existsSync(absReceipt)) fail(`Receipt file not found: ${absReceipt}`);
 
@@ -546,6 +543,13 @@ function cmdCheckReceipt(args) {
   if (errors.length > 0) {
     console.log(JSON.stringify({ ok: false, errors }, null, 2));
     process.exit(1);
+  }
+  const prUrls = getPrUrls(state);
+  const prUrl = state.pull_request?.url || (prUrls.length === 1 ? prUrls[0] : null)
+    || (prUrls.length === 0 ? ge.pr_url : null);
+  if (prUrl && (!ge.pr_url || ge.pr_url === prUrl) && state.pull_request?.head_sha !== ge.head_sha) {
+    state.pull_request = { ...state.pull_request, url: prUrl, head_sha: ge.head_sha };
+    writeTaskState(statePath, state);
   }
   console.log(JSON.stringify({ ok: true, task_id: taskId, role: receipt.role, status: receipt.status, head_sha: ge.head_sha }, null, 2));
 }
@@ -634,6 +638,9 @@ const SECRET_RULES = [
   { name: "Private Key Block", re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/g },
   { name: "Bearer Token", re: /\bBearer\s+[A-Za-z0-9._-]{24,}\b/g },
   { name: "Mainland China Mobile PII", re: /(?:(?<![0-9A-Za-z])|(?<=\+86))1[3-9]\d{9}(?![0-9A-Za-z])/g },
+  { name: "DB / Cache Credential URL", re: /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|amqps?):\/\/(?!<)[^/\s:@"'`<>]+:(?!<|\*|\$\{)[^/\s@"'`<>]{4,}@[^\s"'`<>]+/gi },
+  { name: "S3 / OSS Presigned URL Signature", re: /[?&](?:X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token|OSSAccessKeyId|Signature)=[A-Za-z0-9%_+/=-]{12,}/gi },
+  { name: "Webhook / API Secret Query URL", re: /https?:\/\/[^\s"'`<>]+\?(?:[^\s"'`<>]*&)?(?:token|key|secret|api_key|apikey|access_token|webhook_secret)=(?!<|\*|\$\{)[A-Za-z0-9._~%+/=-]{8,}/gi },
 ];
 
 function walkFiles(dir, out = []) {
@@ -791,11 +798,31 @@ switch (cmd) {
   case "reindex":
     cmdReindex();
     break;
+  case "serve": {
+    const { startDashboardServer } = await import("./dashboard-server.mjs");
+    let port = Number(process.env.ZSTACK_BOARD_PORT || 4390);
+    let host = "127.0.0.1";
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === "--port") port = Number(rest[++i]);
+      else if (rest[i] === "--host") host = rest[++i];
+    }
+    startDashboardServer({ root: ROOT, host, port });
+    break;
+  }
+  case "daemon": {
+    const { runDaemon } = await import("./daemon.mjs");
+    try {
+      await runDaemon(rest, ROOT);
+    } catch (error) {
+      fail(error.message);
+    }
+    break;
+  }
   case "sync-template": {
     const { runSyncTemplate } = await import("./sync-template.mjs");
     await runSyncTemplate(rest, { root: ROOT, secretRules: SECRET_RULES });
     break;
   }
   default:
-    fail("Unknown command. Available: active | board | init-task | set-phase | bind-thread | archive-task | next-request-id | append-event | check-receipt | merge-gate | check-secrets | reindex | sync-template");
+    fail("Unknown command. Available: active | board | init-task | set-phase | bind-thread | archive-task | next-request-id | append-event | check-receipt | merge-gate | check-secrets | reindex | serve | daemon | sync-template");
 }

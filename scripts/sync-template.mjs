@@ -31,6 +31,7 @@ const WHITELIST_ENTRIES = [
   "skills",
   "schemas",
   "scripts",
+  "tests",
   ".agents",
   ".claude",
   ".codex",
@@ -45,6 +46,9 @@ const FALLBACK_SECRET_RULES = [
   { name: "Private Key Block", re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/g },
   { name: "Bearer Token", re: /\bBearer\s+[A-Za-z0-9._-]{24,}\b/g },
   { name: "Mainland China Mobile PII", re: /(?:(?<![0-9A-Za-z])|(?<=\+86))1[3-9]\d{9}(?![0-9A-Za-z])/g },
+  { name: "DB / Cache Credential URL", re: /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|amqps?):\/\/(?!<)[^/\s:@"'`<>]+:(?!<|\*|\$\{)[^/\s@"'`<>]{4,}@[^\s"'`<>]+/gi },
+  { name: "S3 / OSS Presigned URL Signature", re: /[?&](?:X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token|OSSAccessKeyId|Signature)=[A-Za-z0-9%_+/=-]{12,}/gi },
+  { name: "Webhook / API Secret Query URL", re: /https?:\/\/[^\s"'`<>]+\?(?:[^\s"'`<>]*&)?(?:token|key|secret|api_key|apikey|access_token|webhook_secret)=(?!<|\*|\$\{)[A-Za-z0-9._~%+/=-]{8,}/gi },
 ];
 
 const BUILTIN_FORBIDDEN_PATTERNS = [
@@ -232,6 +236,32 @@ function sanitizeText(relPath, content, replacements) {
     out = transformGuardPolicy(out);
   } else if (relPath === "README.md") {
     out = transformReadme(out);
+  } else if (relPath === "scripts/board-core.mjs") {
+    out = out.replace(
+      /export function defaultReleaseChecklist\(projectSlug\) \{\n  if \(projectSlug === "[a-z0-9-]+"\) \{\n[\s\S]*?\n  \}/,
+      "export function defaultReleaseChecklist() {"
+    );
+  } else if (relPath === "scripts/dashboard-server.mjs") {
+    out = out
+      .replace(/(action\.project_slug \|\| )"[a-z0-9-]+"/g, '$1"-"')
+      .replace(/(Object\.keys\(projects\)\[0\] \|\| )"[a-z0-9-]+"/, '$1"example"')
+      .replace(/project_slug: body\.project \|\| body\.project_slug \|\| "[a-z0-9-]+",/, "project_slug: body.project || body.project_slug,")
+      .replace(/(body\.project_slug \|\| )"[a-z0-9-]+"/, '$1Object.keys(loadProjects(root))[0] || "example"');
+  } else if (relPath === "scripts/dashboard-ui.html") {
+    out = out
+      .replace(/(state\.project \|\| getProjectSlugs\(\)\[0\] \|\| )"[a-z0-9-]+"/, '$1"example"')
+      .replace(/placeholder="例如：[^"]+ SaaS 发版车次"/, 'placeholder="例如：v1.0.0 发版车次"')
+      .replace(/placeholder="例如：\d+ 或 https:\/\/github\.com\/[^"]+"/, 'placeholder="例如：123 或 https://github.com/owner/repo/pull/123"')
+      .replace(/placeholder="例如：[a-z0-9]+-core-[a-z0-9-]+"/, 'placeholder="例如：example-core-update"')
+      .replace(
+        /(const isNum = \/\^\\d\+\$\/\.test\(raw\);)([\s\S]*?pr_url: isNum \? .)https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\$\{raw\}/,
+        (_match, numberCheck, actionPrefix) => [
+          numberCheck,
+          '            const canonicalRepo = state.snapshot?.projects?.find((p) => p.slug === defaultProj)?.canonical_repo || "";',
+          '            const repo = canonicalRepo.match(/^(?:https:\\/\\/)?github\\.com\\/([\\w.-]+\\/[\\w.-]+?)(?:\\.git)?\\/?$/i)?.[1];',
+          '            if (isNum && !repo) { showToast("请提供完整 PR URL", "", "warn"); return; }',
+        ].join("\n") + actionPrefix + "https://github.com/${repo}/pull/${raw}"
+      );
   }
   for (const { re, replacement } of replacements) {
     re.lastIndex = 0;

@@ -13,7 +13,9 @@ Incident reports, user-forwarded logs, and tickets may contain conflicting or un
 
 Before launching an Investigator thread, confirm all 4 items (if any is missing, ask the user concisely first):
 1. **Target project & environment**: Match against `projects/<slug>/project.yaml` `environments` and confirm `access: "read_only_triage_only"`.
-2. **Hard permission boundary**: Explicitly state `mutations_performed: 0` — no config changes, no permission edits, no service restarts.
+2. **Hard permission & credential boundary**:
+   - Explicitly state `mutations_performed: 0` — no config changes, no permission edits, no service restarts.
+   - **No credential scraping**: If read-only DB access is needed, use **only** the pre-designated read-only DB environment variable specified in the project SOP. If that variable is missing, the Investigator **must stop immediately and return `status: "blocked"`** — never read or extract credentials from Kubernetes Deployments/Secrets/ConfigMaps, Helm values, `.env` files, kubeconfigs, or `/proc/*/environ`.
 3. **Diagnostic anchors**: Specific diagnostic IDs, trace/request IDs, time window, or exact failure symptom.
 4. **Deliverable scope**: Exact root-cause question to answer and whether application-side vs cluster-side config is implicated.
 

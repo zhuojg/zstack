@@ -11,6 +11,9 @@ Default delivery mode is **`auto_merge_on_gate_pass`**: once a PR passes determi
 3. **Author != Reviewer**: Implementer self-checks are prerequisites for opening review, never a substitute for an independent Reviewer thread.
 4. **Reviewer != Fixer**: Reviewers report structured `findings` (`blocker` / `major` / `minor` with `location` and `repro_or_evidence`) and never mutate product code.
 5. **Bounded Incremental Re-verification**: After Implementer pushes fixes, Round N+1 Reviewer verifies only unresolved findings + regression surface of the new diff (`old_sha..new_sha`). Max 3 review rounds before escalating to human.
+6. **Live Fact Freshness (No Stale Truth)**: Never treat historical verified release versions, old handoff documents, or local workspace directory names as current production truth. Any claim about live production state requires fresh read-only verification.
+7. **Missing Callback / Report != Success or Healthy**: Absence of a callback, scheduled check report, or alert is **never** proof of task completion or healthy production state. Always verify live state explicitly (`t3_thread_read`, remote PR timeline, or read-only runtime checks).
+8. **Timeline Re-Fetch on User Update Signal**: When the user reports that a PR has been updated, even if a cached/recent `head_sha` looks unchanged, re-fetch the full commits, reviews, and comments timeline before replying — never dismiss the user's observation based on a stale snapshot.
 
 ## Auto-Merge Gate (`./scripts/zstack merge-gate <task-id>`)
 

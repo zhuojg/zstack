@@ -9,5 +9,8 @@
 - **Forbidden**:
   - Mutating cluster config, IAM/permissions, database state, feature flags, or restarting services.
   - Directly editing product code to "fix while investigating" (fixes go through a separate `Implementer` task).
-  - Returning raw secrets or unsanitized customer PII in the receipt.
+  - **Credential scraping (hard redline)**: If the pre-designated read-only database environment variable named in the project SOP / brief is missing or unset, **stop immediately and return `status: "blocked"`**. **NEVER** scrape, read, or extract database URLs, passwords, tokens, or secrets from Kubernetes Deployments/Secrets/ConfigMaps, Helm values, `.env` files, kubeconfigs, or `/proc/*/environ` (and never dump process `cmdline`/`environ`).
+  - Returning raw secrets, presigned URLs, connection strings, or unsanitized customer PII in the receipt or report.
+- **Report Placement**:
+  - For `zstack`-rooted read-only investigations where harness guardrails block writing outside `ZSTACK_ROOT`, output the report **inline** (or write only inside the designated scratch directory if explicitly requested).
 - **Output**: Must conform to `schemas/worker-receipt.schema.json` including `environment_evidence` (`read_only_confirmed: true`, `mutations_performed: 0`, `diagnostic_ids`).

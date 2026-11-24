@@ -32,7 +32,8 @@ Every entry in `memory/preferences.md` and `memory/facts/*.md` must include:
 
 ## Hard Privacy & Secret Redlines (Even in Private Repo)
 
-- **NEVER commit to Git**: API keys, tokens, passwords, SSH private keys, cookies, kubeconfigs, real customer PII, or raw production logs/DB dumps.
+- **NEVER commit to Git**: API keys, tokens, passwords, SSH private keys, cookies, kubeconfigs, DB/cache credential URLs, presigned S3/OSS URLs, webhook secret URLs, real customer PII, or raw production logs/DB dumps.
+- **Sensitive File Diff Discipline**: When inspecting or diffing files that may contain secrets (`.env`, Helm `values*.yaml`, Kubernetes Secrets, kubeconfigs, webhook configs, key files), use **only** `--stat`, `--name-only`, or `key name + sha256` comparisons. **Never** print plaintext diff lines or raw secret values into stdout, logs, receipts, or reports.
 - Secrets flow only through T3 `request_secret`, system Keychain, or runtime env vars.
 - Raw production logs (if temporarily saved during troubleshooting) go only to `~/.zstack-local/ephemeral/<task-id>/` (outside Git, auto-cleaned). Only sanitized diagnostic IDs and root-cause conclusions enter `zstack`.
 

@@ -21,9 +21,63 @@
     "task_id": { "type": "string" },
     "project_slug": { "type": "string" },
     "title": { "type": "string" },
+    "kind": {
+      "enum": ["feature", "bug", "release", "review"]
+    },
+    "priority": {
+      "enum": ["P0", "P1", "P2", "-"]
+    },
+    "severity": {
+      "type": ["string", "null"],
+      "enum": ["P0", "P1", "P2", "P3", null]
+    },
+    "owner": {
+      "enum": ["me", "team"]
+    },
+    "bucket": {
+      "type": ["string", "null"],
+      "enum": ["must", "maybe", "team", null]
+    },
+    "source": {
+      "type": ["string", "null"]
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "has_migration": {
+      "type": "boolean"
+    },
+    "release_id": {
+      "type": ["string", "null"]
+    },
+    "checklist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "done"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "done": { "type": "boolean" }
+        }
+      }
+    },
+    "lease_minutes": {
+      "type": "number",
+      "minimum": 1
+    },
     "phase": {
       "enum": [
+        "backlog",
         "intake",
+        "in_progress",
+        "in_review",
+        "blocked",
+        "needs_human",
+        "merged_pending_release",
+        "completed",
+        "archived",
         "implementing",
         "reviewing",
         "fixing",
@@ -32,14 +86,18 @@
         "investigating",
         "blocked_provider",
         "blocked_dispatch",
-        "needs_human",
         "closed"
       ]
     },
+    "next_step": { "type": ["string", "null"] },
     "created_at": { "type": "string" },
     "updated_at": { "type": "string" },
     "threads": { "type": "object" },
     "pull_request": { "type": ["object", "null"] },
+    "pull_requests": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "gates": { "type": "object" },
     "idempotency_keys": { "type": "object" },
     "open_risks": { "type": "array", "items": { "type": "string" } }

@@ -1,0 +1,3181 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>zstack — Board</title>
+  <style>
+    :root {
+      /* x.ai Minimalist Dark Sci-Fi Editorial Tokens (preserved from R2+R3) */
+      --bg: #000000;
+      --bg-surface: #07080a;
+      --bg-card: #090a0d;
+      --bg-card-hover: #0e1015;
+      --bg-elevated: #0d0f13;
+      --bg-inset: #050608;
+      --bg-glass: rgba(0, 0, 0, 0.84);
+
+      --border: rgba(255, 255, 255, 0.09);
+      --border-subtle: rgba(255, 255, 255, 0.055);
+      --border-hover: rgba(255, 255, 255, 0.22);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --border-btn: rgba(255, 255, 255, 0.18);
+
+      --fg: #ffffff;
+      --fg-secondary: #d1d5db;
+      --fg-muted: #9ca3af;
+      --fg-dim: #646b78;
+      --fg-faint: #464c57;
+
+      --btn-primary-bg: #ffffff;
+      --btn-primary-fg: #000000;
+      --btn-primary-hover: #e5e7eb;
+
+      --sig-amber: #f59e0b;
+      --sig-amber-bg: rgba(245, 158, 11, 0.075);
+      --sig-amber-border: rgba(245, 158, 11, 0.36);
+
+      --sig-green: #34d399;
+      --sig-green-bg: rgba(52, 211, 153, 0.075);
+      --sig-green-border: rgba(52, 211, 153, 0.32);
+
+      --sig-red: #f87171;
+      --sig-red-bg: rgba(248, 113, 113, 0.085);
+      --sig-red-border: rgba(248, 113, 113, 0.36);
+
+      --glow-top: radial-gradient(ellipse 64% 28% at 50% -10%, rgba(255, 255, 255, 0.075) 0%, rgba(210, 220, 235, 0.025) 44%, rgba(0, 0, 0, 0) 76%);
+      --horizon-line: linear-gradient(90deg, transparent 5%, rgba(255, 255, 255, 0.22) 50%, transparent 95%);
+      --backdrop: rgba(0, 0, 0, 0.72);
+      --shadow-float: 0 20px 56px rgba(0, 0, 0, 0.86), 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+      --radius: 10px;
+      --radius-sm: 6px;
+      --radius-pill: 999px;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+      color-scheme: dark;
+    }
+
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --bg-surface: #fafafa;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f7f8fa;
+      --bg-elevated: #ffffff;
+      --bg-inset: #f4f5f7;
+      --bg-glass: rgba(255, 255, 255, 0.88);
+
+      --border: rgba(0, 0, 0, 0.09);
+      --border-subtle: rgba(0, 0, 0, 0.055);
+      --border-hover: rgba(0, 0, 0, 0.24);
+      --border-strong: rgba(0, 0, 0, 0.16);
+      --border-btn: rgba(0, 0, 0, 0.18);
+
+      --fg: #09090b;
+      --fg-secondary: #27272a;
+      --fg-muted: #52525b;
+      --fg-dim: #71717a;
+      --fg-faint: #a1a1aa;
+
+      --btn-primary-bg: #000000;
+      --btn-primary-fg: #ffffff;
+      --btn-primary-hover: #27272a;
+
+      --sig-amber: #b45309;
+      --sig-amber-bg: rgba(217, 119, 6, 0.075);
+      --sig-amber-border: rgba(180, 83, 9, 0.34);
+
+      --sig-green: #059669;
+      --sig-green-bg: rgba(5, 150, 105, 0.075);
+      --sig-green-border: rgba(5, 150, 105, 0.3);
+
+      --sig-red: #dc2626;
+      --sig-red-bg: rgba(220, 38, 38, 0.075);
+      --sig-red-border: rgba(220, 38, 38, 0.32);
+
+      --glow-top: radial-gradient(ellipse 64% 28% at 50% -10%, rgba(0, 0, 0, 0.035) 0%, rgba(0, 0, 0, 0.012) 45%, rgba(255, 255, 255, 0) 76%);
+      --horizon-line: linear-gradient(90deg, transparent 5%, rgba(0, 0, 0, 0.16) 50%, transparent 95%);
+      --backdrop: rgba(9, 9, 11, 0.4);
+      --shadow-float: 0 20px 56px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.08);
+      color-scheme: light;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 360px;
+      background: var(--glow-top);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--horizon-line);
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+    :focus-visible {
+      outline: 1px solid var(--border-hover);
+      outline-offset: 2px;
+    }
+
+    .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--fg-dim);
+      line-height: 1.2;
+    }
+
+    /* Buttons */
+    button {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-btn);
+      background: transparent;
+      color: var(--fg-secondary);
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.08s ease;
+    }
+    button:hover {
+      border-color: var(--border-hover);
+      color: var(--fg);
+      background: rgba(128, 128, 128, 0.08);
+    }
+    button:active { transform: translateY(0.5px); }
+    button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+    button.primary {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      border-color: var(--btn-primary-bg);
+      font-weight: 600;
+    }
+    button.primary:hover {
+      background: var(--btn-primary-hover);
+      border-color: var(--btn-primary-hover);
+      color: var(--btn-primary-fg);
+    }
+
+    button.amber {
+      background: var(--sig-amber-bg);
+      border-color: var(--sig-amber-border);
+      color: var(--sig-amber);
+    }
+    button.amber:hover {
+      border-color: var(--sig-amber);
+      background: rgba(245, 158, 11, 0.14);
+      color: var(--sig-amber);
+    }
+
+    button.danger {
+      background: var(--sig-red-bg);
+      border-color: var(--sig-red-border);
+      color: var(--sig-red);
+    }
+    button.danger:hover {
+      border-color: var(--sig-red);
+      background: rgba(248, 113, 113, 0.16);
+    }
+
+    button.green {
+      background: var(--btn-primary-bg);
+      border-color: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      font-weight: 600;
+    }
+    button.green:hover {
+      background: var(--btn-primary-hover);
+      border-color: var(--btn-primary-hover);
+      color: var(--btn-primary-fg);
+    }
+
+    button.ghost {
+      border-color: transparent;
+      background: transparent;
+      color: var(--fg-muted);
+      padding: 4px 8px;
+    }
+    button.ghost:hover {
+      color: var(--fg);
+      border-color: var(--border);
+      background: rgba(128, 128, 128, 0.08);
+    }
+
+    button.icon-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: var(--radius-pill);
+      border-color: var(--border);
+      color: var(--fg-muted);
+    }
+    button.icon-btn:hover { color: var(--fg); border-color: var(--border-hover); }
+
+    button.sm { padding: 3.5px 10px; font-size: 11.5px; }
+    button.xs {
+      padding: 2px 7px;
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Indicator micro-dots */
+    .dot {
+      width: 5.5px;
+      height: 5.5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--fg-dim);
+      display: inline-block;
+    }
+    .dot.live {
+      background: var(--sig-green);
+      box-shadow: 0 0 6px rgba(52, 211, 153, 0.55);
+    }
+    .dot.warn {
+      background: var(--sig-amber);
+      box-shadow: 0 0 6px rgba(245, 158, 11, 0.52);
+    }
+    .dot.danger {
+      background: var(--sig-red);
+      box-shadow: 0 0 6px rgba(248, 113, 113, 0.55);
+    }
+    .dot.active-pulse {
+      background: var(--fg);
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+      animation: pulse-dot 2.4s ease-in-out infinite;
+    }
+    [data-theme="light"] .dot.active-pulse {
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.22);
+    }
+    .dot.ring {
+      background: transparent;
+      border: 1.4px solid var(--fg-muted);
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* 48px Single-Row Topbar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      height: 48px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-inner {
+      max-width: 1080px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: nowrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex-shrink: 0;
+    }
+    .brand-name {
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+
+    /* Unified Live Status + Hover Popover */
+    .status-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .status-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      letter-spacing: 0.05em;
+      color: var(--fg-muted);
+      cursor: default;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .status-wrap:hover .status-trigger,
+    .status-wrap:focus-within .status-trigger {
+      border-color: var(--border-hover);
+      color: var(--fg);
+    }
+    .status-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 258px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-float);
+      opacity: 0;
+      transform: translateY(-4px);
+      pointer-events: none;
+      transition: opacity 0.14s ease, transform 0.14s ease;
+      z-index: 35;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-popover::before {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: 0;
+      right: 0;
+      height: 10px;
+    }
+    .status-wrap:hover .status-popover,
+    .status-wrap:focus-within .status-popover {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .status-pop-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11.5px;
+    }
+    .status-pop-val {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--fg-secondary);
+    }
+    .status-pop-div { height: 1px; background: var(--border-subtle); }
+
+    /* Topbar Right Actions + Create Dropdown */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .dropdown-wrap { position: relative; }
+    .create-btn {
+      height: 28px;
+      padding: 0 11px 0 12px;
+      font-size: 12px;
+      gap: 5px;
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 7px);
+      right: 0;
+      width: 226px;
+      padding: 5px;
+      border-radius: var(--radius);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-float);
+      opacity: 0;
+      transform: translateY(-4px) scale(0.985);
+      pointer-events: none;
+      transition: opacity 0.14s ease, transform 0.14s ease;
+      z-index: 36;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .dropdown-wrap.open .dropdown-menu {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .dropdown-item {
+      width: 100%;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      text-align: left;
+      white-space: normal;
+    }
+    .dropdown-item:hover {
+      background: rgba(128, 128, 128, 0.12);
+      border-color: transparent;
+    }
+    .dropdown-item:active { transform: none; }
+    .dropdown-item-title { font-size: 12.5px; font-weight: 500; color: var(--fg); }
+    .dropdown-item-desc { font-size: 11px; color: var(--fg-dim); font-weight: 400; }
+
+    /* Main Workspace Container */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 10px 20px 56px;
+    }
+
+    /* Strictly Single-Row 38px Navigation & Filter Bar */
+    .filterbar {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: nowrap;
+      gap: 8px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-wrap: nowrap;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      height: 100%;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      position: relative;
+      height: 100%;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: var(--fg-muted);
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 500;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+    .tab:hover { color: var(--fg); background: transparent; border-color: transparent; }
+    .tab:active { transform: none; }
+    .tab.active { color: var(--fg); background: transparent; }
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 0;
+      height: 1.5px;
+      background: var(--fg);
+    }
+    .tab-count {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--fg-dim);
+      font-variant-numeric: tabular-nums;
+    }
+    .tab.active .tab-count { color: var(--fg-muted); }
+
+    .filter-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .input {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 9px;
+      color: var(--fg);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.14s ease, background 0.14s ease, width 0.18s ease;
+    }
+    .input::placeholder { color: var(--fg-dim); }
+    .input:hover { border-color: var(--border-strong); }
+    .input:focus { border-color: var(--border-hover); background: var(--bg-card); }
+
+    #project-filter {
+      height: 26px;
+      padding: 0 6px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      letter-spacing: 0.03em;
+      max-width: 82px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+    }
+    #project-filter:hover, #project-filter:focus {
+      border-color: var(--border);
+      background: var(--bg-surface);
+      color: var(--fg);
+    }
+
+    .search-box { position: relative; display: flex; align-items: center; }
+    .search-icon {
+      position: absolute;
+      left: 8px;
+      width: 12px;
+      height: 12px;
+      color: var(--fg-dim);
+      pointer-events: none;
+    }
+    #search-input {
+      height: 26px;
+      padding: 0 8px 0 24px;
+      width: 138px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      font-size: 11.5px;
+    }
+    #search-input:focus { width: 176px; }
+
+    /* Minimal Editorial Section Headers */
+    .section { margin-bottom: 20px; }
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      padding: 0 2px;
+    }
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+    }
+    .section-count {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--fg-faint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Hairline 2-Layer Row-Card Stack */
+    .task-list {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      overflow: hidden;
+    }
+    .task-list.attention-list { border-color: var(--sig-amber-border); }
+    .task-list.danger-list { border-color: var(--sig-red-border); }
+
+    .task-row {
+      position: relative;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .task-row:last-child { border-bottom: none; }
+    .task-row:hover { background: var(--bg-card-hover); }
+    .task-row.selected { background: var(--bg-card-hover); }
+
+    .task-row.needs-human {
+      background: linear-gradient(90deg, var(--sig-amber-bg) 0%, var(--bg-card) 42%);
+      box-shadow: inset 2px 0 0 var(--sig-amber);
+    }
+    .task-row.p0-bug {
+      background: linear-gradient(90deg, var(--sig-red-bg) 0%, var(--bg-card) 42%);
+      box-shadow: inset 2px 0 0 var(--sig-red);
+    }
+    .task-row.blocked { box-shadow: inset 2px 0 0 var(--sig-red); }
+    .task-row.merged { opacity: 0.86; }
+    .task-row.merged:hover { opacity: 1; }
+
+    /* Layer 1: Status dot + Concise Title + High-Signal Micro-Tags */
+    .task-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+    .task-row-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .task-row-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      letter-spacing: -0.012em;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .task-row-tags {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    /* High-Signal Micro-Tags (only shown when meaningful) */
+    .micro {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      padding: 1px 5.5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      background: var(--bg-surface);
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .micro.p0 {
+      color: var(--sig-red);
+      border-color: var(--sig-red-border);
+      background: var(--sig-red-bg);
+      font-weight: 600;
+    }
+    .micro.p1 { color: var(--fg-secondary); border-color: var(--border-strong); }
+    .micro.db {
+      color: var(--sig-amber);
+      border-color: var(--sig-amber-border);
+      background: var(--sig-amber-bg);
+      font-weight: 600;
+    }
+    .micro.stale {
+      color: var(--sig-amber);
+      border-color: var(--sig-amber-border);
+      background: var(--sig-amber-bg);
+    }
+    .micro.locked {
+      color: var(--fg-muted);
+      border-color: var(--border-strong);
+    }
+    .micro.pass {
+      color: var(--sig-green);
+      border-color: var(--sig-green-border);
+      background: var(--sig-green-bg);
+    }
+
+    /* Layer 2: Faint Mono Telemetry + Hover-Reveal Quick Actions */
+    .task-row-sub {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-left: 13.5px;
+      min-width: 0;
+    }
+    .task-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--fg-dim);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .tele-sep { color: var(--fg-faint); user-select: none; flex-shrink: 0; }
+    .tele-link { color: var(--fg-muted); flex-shrink: 0; transition: color 0.12s; }
+    .tele-link:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+    .tele-note {
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      color: var(--fg-dim);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .task-row:hover .tele-note { color: var(--fg-muted); }
+
+    .task-row-quick {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+    .task-row:hover .task-row-quick,
+    .task-row:focus-within .task-row-quick { opacity: 1; }
+
+    .quick-link, .quick-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--fg-muted);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      letter-spacing: 0.03em;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      line-height: 1.4;
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+    }
+    .quick-link:hover, .quick-btn:hover {
+      color: var(--fg);
+      background: rgba(128, 128, 128, 0.14);
+      border-color: var(--border);
+    }
+    .quick-btn.accent {
+      color: var(--fg);
+      border-color: var(--border-strong);
+      background: var(--bg-surface);
+    }
+    .quick-btn.accent:hover {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      border-color: var(--btn-primary-bg);
+    }
+
+    .task-row-decisions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      padding: 5px 0 1px 13.5px;
+    }
+
+    /* Segmented sub-switch (Archive / Dispatch Log) */
+    .sub-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .sub-switch button {
+      border: none;
+      padding: 2.5px 9px;
+      font-size: 11px;
+      color: var(--fg-muted);
+      background: transparent;
+    }
+    .sub-switch button.active {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      font-weight: 600;
+    }
+
+    /* Hairline Badges (Drawer & Logs) */
+    .badges { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 2px 6.5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--fg-muted);
+      line-height: 1.35;
+    }
+    .badge.strong { color: var(--fg); border-color: var(--border-strong); }
+    .badge.pass { color: var(--sig-green); border-color: var(--sig-green-border); background: var(--sig-green-bg); }
+    .badge.changes { color: var(--sig-amber); border-color: var(--sig-amber-border); background: var(--sig-amber-bg); }
+    .badge.blocker { color: var(--sig-red); border-color: var(--sig-red-border); background: var(--sig-red-bg); }
+    .badge.link:hover { border-color: var(--border-hover); color: var(--fg); }
+
+    .thread-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .thread-chip:hover { border-color: var(--border-hover); color: var(--fg); }
+
+    .empty {
+      padding: 24px 16px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--fg-dim);
+      background: var(--bg-surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* Slide-Over Vercel Board Thread Drawer */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: var(--backdrop);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 40;
+      display: flex;
+      justify-content: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      width: min(600px, 100vw);
+      height: 100%;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-float);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateX(20px);
+      transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-backdrop.open .drawer { transform: translateX(0); }
+    .drawer-head {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .drawer-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.35;
+      color: var(--fg);
+      margin-top: 6px;
+    }
+    .drawer-sub {
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--fg-dim);
+      word-break: break-all;
+    }
+    .drawer-head-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    /* Compact Inline Metadata Controls in Drawer */
+    .meta-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+    }
+    .inline-select {
+      height: 24px;
+      padding: 0 7px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--fg-secondary);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      cursor: pointer;
+      outline: none;
+    }
+    .inline-select:hover, .inline-select:focus {
+      border-color: var(--border-hover);
+      color: var(--fg);
+    }
+    .dep-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--fg-secondary);
+      cursor: pointer;
+    }
+    .dep-chip:hover { border-color: var(--border-hover); color: var(--fg); }
+    .dep-chip.locked { border-color: var(--sig-amber-border); color: var(--sig-amber); background: var(--sig-amber-bg); }
+    .dep-chip.done { border-color: var(--sig-green-border); color: var(--sig-green); background: var(--sig-green-bg); }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .drawer-foot {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .drawer-foot .input { flex: 1; background: var(--bg-inset); height: 32px; font-size: 12px; }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 13px;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 9px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--fg-muted);
+      margin: 0;
+    }
+    .drawer-next {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--fg-secondary);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .gate-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .gate-cell {
+      background: var(--bg-surface);
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .gate-val {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--fg);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      word-break: break-word;
+    }
+
+    /* Release Checklist & Included PRs */
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 7px 4px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--fg-secondary);
+      transition: color 0.12s;
+    }
+    .check-row:last-child { border-bottom: none; }
+    .check-row:hover { color: var(--fg); }
+    .check-row input[type="checkbox"] {
+      margin-top: 2px;
+      accent-color: var(--sig-green);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .check-row.done span { text-decoration: line-through; color: var(--fg-dim); }
+
+    .rel-pr-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 12px;
+    }
+    .rel-pr-row:last-child { border-bottom: none; }
+    .rel-pr-main { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+    .rel-pr-title {
+      color: var(--fg-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    .rel-pr-title:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* Unified Vercel Board Style Thread Stream */
+    .thread-stream {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .thread-msg {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      border-left: 2px solid var(--border-strong);
+      font-size: 12px;
+    }
+    .thread-msg.kind-comment { border-left-color: var(--fg-muted); }
+    .thread-msg.kind-steer { border-left-color: var(--fg); background: var(--bg-surface); }
+    .thread-msg.kind-receipt-pass { border-left-color: var(--sig-green); }
+    .thread-msg.kind-receipt-changes { border-left-color: var(--sig-amber); }
+    .thread-msg.kind-phase { border-left-color: var(--border-hover); }
+
+    .thread-msg-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+    .thread-actor-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .actor-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--fg-secondary);
+      text-transform: lowercase;
+    }
+    .actor-pill.you {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      border-color: var(--btn-primary-bg);
+    }
+    .actor-pill.model { color: var(--fg); border-color: var(--border-strong); }
+    .thread-msg-title {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--fg-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .thread-msg-body {
+      color: var(--fg-muted);
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .thread-msg.kind-comment .thread-msg-body,
+    .thread-msg.kind-steer .thread-msg-body { color: var(--fg); }
+
+    .kv-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 12px;
+    }
+    .kv-row:first-child { padding-top: 0; }
+    .kv-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .receipt-tabs { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 9px; }
+    .receipt-tab {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--fg-muted);
+    }
+    .receipt-tab.active {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      border-color: var(--btn-primary-bg);
+      font-weight: 600;
+    }
+
+    .sub-heading {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      margin: 10px 0 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .finding-row {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+    .finding-row:last-child { margin-bottom: 0; }
+    .finding-row.sev-blocker { border-left: 2px solid var(--sig-red); }
+    .finding-row.sev-major { border-left: 2px solid var(--sig-amber); }
+    .finding-summary { font-weight: 500; color: var(--fg); margin-top: 4px; line-height: 1.45; }
+    .finding-evidence { color: var(--fg-muted); margin-top: 3px; font-size: 11.5px; line-height: 1.45; word-break: break-word; }
+
+    .risk-row {
+      padding: 7px 9px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-inset);
+      border: 1px solid var(--border-subtle);
+      border-left: 2px solid var(--sig-amber);
+      font-size: 12px;
+      color: var(--fg-secondary);
+      margin-bottom: 5px;
+      line-height: 1.45;
+    }
+    .risk-row:last-child { margin-bottom: 0; }
+
+    .time { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); white-space: nowrap; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: var(--backdrop);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.14s ease;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      width: min(490px, 100%);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      box-shadow: var(--shadow-float);
+      overflow: hidden;
+      transform: translateY(8px) scale(0.985);
+      transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+    .modal-head {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-title { font-size: 13.5px; font-weight: 600; color: var(--fg); }
+    .modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; max-height: 75vh; overflow-y: auto; }
+    .modal-foot {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+    }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+    }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    textarea.input { min-height: 74px; resize: vertical; line-height: 1.5; }
+    .modal-hint { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); margin-right: auto; }
+
+    /* Toasts */
+    .toast-stack {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: min(380px, calc(100vw - 32px));
+    }
+    .toast {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-left: 2px solid var(--fg);
+      border-radius: var(--radius-sm);
+      padding: 9px 11px;
+      box-shadow: var(--shadow-float);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      animation: toast-in 0.16s ease;
+    }
+    .toast.ok { border-left-color: var(--sig-green); }
+    .toast.warn { border-left-color: var(--sig-amber); }
+    .toast.err { border-left-color: var(--sig-red); }
+    .toast-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .toast-title { font-weight: 600; color: var(--fg); }
+    .toast-detail { color: var(--fg-muted); font-size: 11.5px; word-break: break-word; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Half-screen & Mobile Precision (640px–920px: strictly single-row nav) */
+    @media (max-width: 920px) {
+      .topbar-inner { padding: 0 14px; }
+      .container { padding: 10px 14px 48px; }
+      .tab { padding: 0 7px; font-size: 11.5px; gap: 4px; }
+      #search-input { width: 108px; }
+      #search-input:focus { width: 144px; }
+      #project-filter { max-width: 68px; }
+      .gate-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .tab { padding: 0 6px; font-size: 11px; }
+      #search-input { width: 82px; }
+      #search-input:focus { width: 116px; }
+      #project-filter { max-width: 58px; }
+      .task-row { padding: 9px 12px; }
+      .field-row, .field-row-3 { grid-template-columns: 1fr; }
+    }
+    @media (hover: none) {
+      .task-row-quick { opacity: 0.78; }
+    }
+    .github-wrap { position: relative; flex: 0 0 auto; }
+    .github-trigger { white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+    .github-trigger .dot { width: 6px; height: 6px; flex: 0 0 6px; }
+    .github-panel {
+      position: absolute;
+      z-index: 60;
+      inset-inline-end: 0;
+      top: calc(100% + 8px);
+      width: min(290px, 70vw);
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px #0002;
+      overflow-wrap: anywhere;
+    }
+    .github-panel p { margin: 0 0 8px; font-size: 12px; }
+    .github-panel ul { margin: 8px 0; padding-left: 16px; font-size: 12px; max-height: 140px; overflow: auto; }
+    .github-actions { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-name">zstack</span>
+
+        <div class="status-wrap" tabindex="0" aria-label="连接与通道状态">
+          <span class="status-trigger" id="status-trigger">
+            <span class="dot" id="status-dot"></span>
+            <span id="status-text">Sync</span>
+          </span>
+          <div class="status-popover" id="status-popover" role="tooltip">
+            <div class="status-pop-row">
+              <span class="eyebrow">SSE Stream</span>
+              <span class="status-pop-val" id="pop-sse"><span class="dot"></span><span>Connecting</span></span>
+            </div>
+            <div class="status-pop-row">
+              <span class="eyebrow">T3 Webhook</span>
+              <span class="status-pop-val" id="pop-webhook"><span class="dot"></span><span>Checking</span></span>
+            </div>
+            <div class="status-pop-row">
+              <span class="eyebrow">Stale Leases</span>
+              <span class="status-pop-val" id="pop-stale"><span class="dot live"></span><span>0</span></span>
+            </div>
+            <div class="status-pop-div"></div>
+            <div class="status-pop-row">
+              <span class="eyebrow">Channels</span>
+              <span class="status-pop-val" id="pop-summary">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="dropdown-wrap" id="create-dropdown">
+          <button class="primary create-btn" id="btn-create-menu" aria-haspopup="true" aria-expanded="false">
+            <span>+ 新建</span>
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="dropdown-menu" role="menu">
+            <button class="dropdown-item" role="menuitem" data-create-action="new_feature">
+              <span class="dropdown-item-title">新需求 / Backlog</span>
+              <span class="dropdown-item-desc">记入活 Backlog 或直接立项开工</span>
+            </button>
+            <button class="dropdown-item" role="menuitem" data-create-action="new_bug">
+              <span class="dropdown-item-title">记一个 Bug</span>
+              <span class="dropdown-item-desc">10 秒快录 · 分诊排查或派修</span>
+            </button>
+            <button class="dropdown-item" role="menuitem" data-create-action="new_release">
+              <span class="dropdown-item-title">建发版车次</span>
+              <span class="dropdown-item-desc">汇聚待发版 PR 与检查清单</span>
+            </button>
+            <button class="dropdown-item" role="menuitem" data-create-action="review_pr">
+              <span class="dropdown-item-title">审外部 PR</span>
+              <span class="dropdown-item-desc">发起固定 SHA 独立复审</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="github-wrap" id="github-wrap">
+          <button class="github-trigger" id="github-trigger" aria-expanded="false" aria-controls="github-panel">
+            <span class="dot" id="github-dot"></span><span id="github-label">GH · —</span>
+          </button>
+          <section class="github-panel" id="github-panel" aria-label="GitHub Sync" hidden>
+            <p id="github-repos"></p>
+            <p id="github-info" aria-live="polite"></p>
+            <ul id="github-recent" aria-label="最近事件"></ul>
+            <div class="github-actions">
+              <button id="github-sync">立即同步</button>
+              <button id="github-toggle" disabled>暂停监听</button>
+            </div>
+          </section>
+        </div>
+        <button class="icon-btn" id="btn-theme" title="切换深浅主题" aria-label="切换深浅主题">
+          <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="filterbar">
+      <nav class="tabs" id="view-tabs" aria-label="Channels">
+        <button class="tab active" data-view="now">Now</button>
+        <button class="tab" data-view="bugs">Bugs</button>
+        <button class="tab" data-view="backlog">Backlog</button>
+        <button class="tab" data-view="releases">Releases</button>
+        <button class="tab" data-view="archive">Archive</button>
+      </nav>
+      <div class="filter-right">
+        <select class="input" id="project-filter" aria-label="按项目筛选">
+          <option value="">全部</option>
+        </select>
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.8"/>
+            <path d="M10.7 10.7L14 14" stroke-linecap="round"/>
+          </svg>
+          <input class="input" id="search-input" type="search" placeholder="搜索..." aria-label="搜索任务、PR 或 SHA" />
+        </div>
+      </div>
+    </div>
+
+    <div id="app-content"></div>
+  </main>
+
+  <!-- Slide-over Vercel Board Thread Drawer -->
+  <div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true">
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-head">
+        <div style="min-width:0;flex:1">
+          <div class="badges" id="drawer-badges"></div>
+          <div class="drawer-title" id="drawer-title"></div>
+          <div class="drawer-sub" id="drawer-subtitle"></div>
+        </div>
+        <div class="drawer-head-actions">
+          <span id="drawer-extra-actions"></span>
+          <button class="icon-btn" id="drawer-close" title="关闭 (ESC)" aria-label="关闭抽屉">
+            <svg width="12.5" height="12.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3L11 11M11 3L3 11"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="meta-bar" id="drawer-meta-bar"></div>
+      <div class="drawer-body" id="drawer-body"></div>
+      <div class="drawer-foot">
+        <input class="input" id="drawer-thread-input" placeholder="写备注 (Enter) 或 Steer 给 Orchestrator (⌘Enter)..." />
+        <button class="sm" id="drawer-comment-btn" title="仅记录到本地 Thread (Enter)">备注</button>
+        <button class="primary sm" id="drawer-steer-btn" title="记录并通过 Webhook 唤醒 Orchestrator (⌘Enter)">Steer ↗</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Action / Creation Modal -->
+  <div class="modal-backdrop" id="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <span class="modal-title" id="modal-title"></span>
+        <button class="icon-btn" id="modal-close" aria-label="关闭弹窗">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3L11 11M11 3L3 11"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">
+        <span class="modal-hint">⌘↵ SUBMIT · ESC CLOSE</span>
+        <button id="modal-cancel">取消</button>
+        <button class="primary" id="modal-submit">确认提交</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+  <script>
+    const state = {
+      snapshot: null,
+      sseState: "connecting",
+      view: "now", // now | bugs | backlog | releases | archive
+      archiveSub: "archived", // archived | dispatch
+      project: "",
+      query: "",
+      selectedTaskId: null,
+      selectedReceiptIdx: 0,
+      receiptsExpanded: false,
+      mergedCollapsed: true,
+      modalSubmitFn: null,
+    };
+
+    const esc = (s) => String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    function safeUrl(raw) {
+      const s = String(raw || "").trim();
+      if (/^(https?:\/\/|t3-thread:\/\/)/i.test(s)) return s;
+      return "#";
+    }
+
+    function fmtTime(iso, compact = false) {
+      if (!iso) return "-";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      const diffSec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+      let rel = "";
+      if (diffSec < 60) rel = compact ? "now" : "刚刚";
+      else if (diffSec < 3600) rel = `${Math.floor(diffSec / 60)}m ago`;
+      else if (diffSec < 86400) rel = `${Math.floor(diffSec / 3600)}h ago`;
+      else rel = `${Math.floor(diffSec / 86400)}d ago`;
+      if (compact) return rel;
+      const abs = new Intl.DateTimeFormat("zh-CN", {
+        timeZone: "Asia/Shanghai",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(d);
+      return `${rel === "刚刚" ? rel : rel} · ${abs}`;
+    }
+
+    function shortSha(sha) {
+      return sha ? String(sha).slice(0, 7) : "";
+    }
+
+    function updateThemeIcon() {
+      const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+      const svg = document.getElementById("theme-icon");
+      if (!svg) return;
+      svg.innerHTML = isDark
+        ? '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/>'
+        : '<path d="M21 13a9 9 0 1 1-10-10 7.5 7.5 0 0 0 10 10Z" fill="currentColor" stroke="none"/>';
+    }
+
+    function updateStatusBadge() {
+      const dot = document.getElementById("status-dot");
+      const txt = document.getElementById("status-text");
+      const popSse = document.getElementById("pop-sse");
+      const popWh = document.getElementById("pop-webhook");
+      const popStale = document.getElementById("pop-stale");
+      const popSummary = document.getElementById("pop-summary");
+
+      const staleCount = state.snapshot?.counts?.stale_count ?? 0;
+      if (state.sseState === "live") {
+        dot.className = staleCount > 0 ? "dot warn" : "dot live";
+        txt.textContent = "Live";
+        popSse.innerHTML = '<span class="dot live"></span><span>Connected · SSE</span>';
+      } else if (state.sseState === "reconnecting") {
+        dot.className = "dot warn";
+        txt.textContent = "Retry";
+        popSse.innerHTML = '<span class="dot warn"></span><span>Reconnecting...</span>';
+      } else {
+        dot.className = "dot";
+        txt.textContent = "Sync";
+        popSse.innerHTML = '<span class="dot"></span><span>Connecting...</span>';
+      }
+
+      const snap = state.snapshot;
+      if (snap) {
+        popWh.innerHTML = snap.webhook?.configured
+          ? '<span class="dot live"></span><span>Auto-wake Ready</span>'
+          : '<span class="dot warn"></span><span>Local Queue</span>';
+        popStale.innerHTML = staleCount > 0
+          ? `<span class="dot warn"></span><span>${staleCount} stale</span>`
+          : '<span class="dot live"></span><span>0 stale</span>';
+        const c = snap.counts || {};
+        popSummary.textContent = `${c.now ?? 0} Now · ${c.backlog ?? 0} BL · ${c.archive ?? 0} Arch`;
+      }
+    }
+
+    function showToast(title, detail, tone = "ok", copyText = null) {
+      const stack = document.getElementById("toast-stack");
+      const el = document.createElement("div");
+      el.className = `toast ${tone}`;
+      el.innerHTML =
+        `<div class="toast-head">` +
+          `<span class="toast-title">${esc(title)}</span>` +
+          `<button class="ghost xs" data-dismiss-toast="1" aria-label="关闭通知">×</button>` +
+        `</div>` +
+        (detail ? `<div class="toast-detail">${esc(detail)}</div>` : "") +
+        (copyText ? `<div style="margin-top:3px"><button class="xs" data-copy="${esc(copyText)}">复制兜底指令</button></div>` : "");
+      if (copyText) {
+        el.querySelector("[data-copy]").addEventListener("click", () => copyToClipboard(copyText));
+      }
+      el.querySelector("[data-dismiss-toast]").addEventListener("click", () => el.remove());
+      stack.appendChild(el);
+      setTimeout(() => { if (el.isConnected) el.remove(); }, 6000);
+    }
+
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("已复制到剪贴板", text.slice(0, 96), "ok");
+      } catch {
+        prompt("请手动复制以下指令：", text);
+      }
+    }
+
+    async function apiRequest(method, url, body) {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    {
+      const githubEl = id => document.getElementById(`github-${id}`);
+      const trigger = githubEl("trigger");
+      const panel = githubEl("panel");
+      let settings;
+      let working = false;
+
+      function setPanel(open) {
+        panel.hidden = !open;
+        trigger.setAttribute("aria-expanded", String(open));
+        if (open) refreshGitHub();
+      }
+
+      function renderGitHub(data) {
+        settings = data;
+        const minutes = data.lastSyncAt ? Math.max(0, Math.floor((Date.now() - Date.parse(data.lastSyncAt)) / 60000)) : null;
+        const age = minutes === null ? "—" : minutes === 0 ? "刚刚" : `${minutes}m前`;
+        githubEl("label").textContent = `GH · ${!data.enabled ? "已暂停" : age}`;
+        githubEl("dot").classList.toggle("live", data.state === "active");
+        githubEl("repos").textContent = data.repos.join(" · ") || "未配置仓库";
+        githubEl("info").textContent = data.lastError || `${data.intervalSeconds}s · ${data.stats.notModified} 次 304 · ${data.launchd.managed ? "launchd 托管" : "前台服务"}`;
+        const labels = {
+          github_pr_review_requested: "请求复审",
+          github_pr_synchronized: "更新提交",
+          github_pr_commented: "新增评论",
+        };
+        githubEl("recent").replaceChildren(...data.recentEvents.map(event => {
+          const row = document.createElement("li");
+          row.textContent = `${labels[event.kind]} · ${event.pr_url.replace("https://github.com/", "")}`;
+          row.title = new Date(event.ts).toLocaleString();
+          return row;
+        }));
+        githubEl("sync").disabled = working || !data.enabled;
+        githubEl("toggle").disabled = working;
+        githubEl("toggle").textContent = data.enabled ? "暂停监听" : "恢复监听";
+      }
+
+      async function refreshGitHub() {
+        if (working) return;
+        try {
+          const data = await apiRequest("GET", "/api/github/status");
+          if (!working) renderGitHub(data);
+        } catch {
+          githubEl("info").textContent = "无法读取 GitHub 状态";
+          githubEl("dot").classList.remove("live");
+        }
+      }
+
+      async function changeGitHub(method, endpoint, value) {
+        if (working) return;
+        working = true;
+        githubEl("sync").disabled = githubEl("toggle").disabled = true;
+        let result;
+        let error;
+        try {
+          result = await apiRequest(method, endpoint, value);
+        } catch (err) {
+          error = err.message;
+        } finally {
+          working = false;
+        }
+        await refreshGitHub();
+        if (error || result?.error) githubEl("info").textContent = error || result.error;
+        else if (result?.events !== undefined) {
+          githubEl("info").textContent = result.allNotModified ? "同步完成 · 无变化（304）" : `同步完成 · ${result.events} 个新事件`;
+        }
+      }
+
+      trigger.addEventListener("click", () => setPanel(panel.hidden));
+      document.addEventListener("click", event => {
+        if (!githubEl("wrap").contains(event.target)) setPanel(false);
+      });
+      githubEl("wrap").addEventListener("keydown", event => {
+        if (event.key === "Escape" && !panel.hidden) {
+          setPanel(false);
+          trigger.focus();
+        }
+      });
+      githubEl("sync").addEventListener("click", () => changeGitHub("POST", "/api/github/sync", {}));
+      githubEl("toggle").addEventListener("click", () => changeGitHub("PATCH", "/api/github/config", { enabled: !settings.enabled }));
+      refreshGitHub();
+      setInterval(refreshGitHub, 15000);
+    }
+
+    function reportWebhookResult(res, fallbackTitle = "已更新") {
+      const a = res?.action;
+      if (!a) {
+        showToast(fallbackTitle, "", "ok");
+        return;
+      }
+      if (a.delivery === "t3-webhook") {
+        showToast("已唤醒 Orchestrator", `${a.id} · ${a.copy_command}`, "ok");
+      } else if (a.delivery === "webhook-failed") {
+        showToast("Webhook 投递失败，已写入本地队列", a.delivery_error || "可复制指令手动粘贴", "warn", res.copy_command);
+      } else {
+        showToast("已写入本地队列", "可复制指令到 Orchestrator 线程", "warn", res.copy_command);
+      }
+    }
+
+    async function triggerAction(payload) {
+      try {
+        const res = await apiRequest("POST", "/api/actions", payload);
+        reportWebhookResult(res);
+        return res;
+      } catch (err) {
+        showToast("触发失败", err.message, "err");
+        throw err;
+      }
+    }
+
+    async function patchTask(taskId, patch, toastLabel = null) {
+      try {
+        const res = await apiRequest("PATCH", `/api/tasks/${encodeURIComponent(taskId)}`, patch);
+        if (res.action) reportWebhookResult(res, toastLabel || "已更新");
+        else if (toastLabel) showToast(toastLabel, taskId, "ok");
+        await refreshSnapshot();
+        return res;
+      } catch (err) {
+        showToast("更新失败", err.message, "err");
+        throw err;
+      }
+    }
+
+    async function refreshSnapshot() {
+      try {
+        const res = await fetch("/api/snapshot");
+        if (res.ok) {
+          state.snapshot = await res.json();
+          render();
+        }
+      } catch {}
+    }
+
+    function openModal(title, bodyHtml, onSubmit, submitLabel = "确认提交") {
+      document.getElementById("modal-title").textContent = title;
+      document.getElementById("modal-body").innerHTML = bodyHtml;
+      document.getElementById("modal-submit").textContent = submitLabel;
+      state.modalSubmitFn = onSubmit;
+      const bd = document.getElementById("modal-backdrop");
+      bd.classList.add("open");
+      bd.setAttribute("aria-hidden", "false");
+      const firstInput = document.querySelector("#modal-body input, #modal-body textarea, #modal-body select");
+      if (firstInput) setTimeout(() => firstInput.focus(), 20);
+    }
+
+    function closeModal() {
+      const bd = document.getElementById("modal-backdrop");
+      bd.classList.remove("open");
+      bd.setAttribute("aria-hidden", "true");
+      state.modalSubmitFn = null;
+    }
+
+    function closeCreateMenu() {
+      const dd = document.getElementById("create-dropdown");
+      dd.classList.remove("open");
+      document.getElementById("btn-create-menu").setAttribute("aria-expanded", "false");
+    }
+
+    function getProjectSlugs() {
+      return [...new Set([
+        ...((state.snapshot?.projects || []).map((p) => p.slug)),
+        ...((state.snapshot?.active_tasks || []).map((t) => t.project_slug)),
+      ])].filter(Boolean);
+    }
+
+    function getProjectOptionsDatalist() {
+      const slugs = getProjectSlugs();
+      return `<datalist id="zstack-proj-list">${slugs.map((s) => `<option value="${esc(s)}"></option>`).join("")}</datalist>`;
+    }
+
+    function filterTasks(tasks) {
+      const q = state.query.trim().toLowerCase();
+      return tasks.filter((t) => {
+        if (state.project && t.project_slug !== state.project) return false;
+        if (!q) return true;
+        const hay = [
+          t.task_id,
+          t.title,
+          t.project_slug,
+          t.kind,
+          t.severity,
+          t.owner,
+          t.source,
+          t.next_step,
+          t.active_model,
+          t.pull_request?.head_sha,
+          ...(t.prs || []).map((p) => `#${p.number} ${p.url}`),
+        ].join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    function isNowTask(t) {
+      if (["backlog", "merged_pending_release", "completed", "archived"].includes(t.phase)) return false;
+      if (t.phase === "needs_human") return true;
+      if (t.kind === "release") return false;
+      if (t.kind === "bug") {
+        if (t.severity === "P0" || t.priority === "P0") return true;
+        return ["in_progress", "in_review", "blocked"].includes(t.phase);
+      }
+      return true;
+    }
+
+    function phaseDotHtml(t) {
+      if (t.phase === "needs_human") return '<span class="dot warn" title="Needs Human"></span>';
+      if (t.kind === "bug" && (t.severity === "P0" || t.priority === "P0")) return '<span class="dot danger" title="P0 Bug"></span>';
+      if (t.phase === "in_progress") return '<span class="dot active-pulse" title="In Progress"></span>';
+      if (t.phase === "in_review") return '<span class="dot ring" title="In Review"></span>';
+      if (t.phase === "blocked") return '<span class="dot danger" title="Blocked"></span>';
+      if (t.phase === "merged_pending_release" || t.phase === "completed") return '<span class="dot live" title="Merged"></span>';
+      if (t.phase === "backlog") return '<span class="dot" title="Backlog"></span>';
+      return '<span class="dot" title="Intake"></span>';
+    }
+
+    function getLatestThread(t) {
+      if (t.threads?.merger?.t3_link) return { label: "Merger", link: t.threads.merger.t3_link };
+      if (t.phase === "in_review" && t.threads?.reviewers?.length) {
+        const r = t.threads.reviewers[t.threads.reviewers.length - 1];
+        if (r?.t3_link) return { label: `Rev R${t.threads.reviewers.length}`, link: r.t3_link };
+      }
+      if (t.threads?.reviewers?.length && !t.threads?.implementer?.t3_link) {
+        const r = t.threads.reviewers[t.threads.reviewers.length - 1];
+        if (r?.t3_link) return { label: `Rev R${t.threads.reviewers.length}`, link: r.t3_link };
+      }
+      if (t.threads?.implementer?.t3_link) return { label: "Impl", link: t.threads.implementer.t3_link };
+      if (t.threads?.investigators?.length) {
+        const inv = t.threads.investigators[t.threads.investigators.length - 1];
+        if (inv?.t3_link) return { label: "Inv", link: inv.t3_link };
+      }
+      if (t.threads?.reviewers?.length) {
+        const r = t.threads.reviewers[t.threads.reviewers.length - 1];
+        if (r?.t3_link) return { label: `Rev R${t.threads.reviewers.length}`, link: r.t3_link };
+      }
+      return null;
+    }
+
+    function renderDecisionButtons(t, inDrawer = false) {
+      if (t.phase !== "needs_human") return "";
+      const external = t.is_external_pr || t.kind === "review";
+      const review = t.latest_review;
+      const needsFix = review && (
+        review.status === "changes_requested" || review.status === "blocked"
+        || review.open_blockers > 0 || review.open_majors > 0
+      );
+      const passed = review?.status === "pass" && review.open_blockers === 0 && review.open_majors === 0
+        && review.head_sha === t.pull_request?.head_sha;
+      let primary = ["continue_round", "继续推进"];
+      if (needsFix) {
+        primary = external ? ["request_changes", "发 Request Changes"] : ["continue_round", "继续修复收口"];
+      } else if (passed) {
+        primary = external ? ["approve_pr", "Approve"] : ["approve_merge", "批准合并"];
+      }
+      const button = (style, decision, label) =>
+        `<button class="${style} sm" data-decide="${decision}" data-task="${esc(t.task_id)}">${label}</button>`;
+      return `
+        <div class="${inDrawer ? "badges" : "task-row-decisions"}">
+          ${button("primary", ...primary)}
+          ${passed && external ? button("ghost", "approve_merge", "Approve 并合并") : ""}
+          ${button("ghost", "custom", "自定义")}
+        </div>`;
+    }
+
+    function renderMicroTags(t) {
+      const tags = [];
+      const sev = t.kind === "bug" ? (t.severity || t.priority) : t.priority;
+      if (sev === "P0") tags.push(`<span class="micro p0">P0</span>`);
+      else if (sev === "P1" && (t.kind === "bug" || t.phase === "backlog")) tags.push(`<span class="micro p1">P1</span>`);
+      else if (t.kind === "bug" && sev) tags.push(`<span class="micro">${esc(sev)}</span>`);
+
+      if (t.has_migration) {
+        tags.push(`<span class="micro db" title="包含 DB Migration">DB</span>`);
+      }
+      if (t.is_blocked_by_deps) {
+        const depNames = (t.blocking_deps || []).map((d) => d.task_id).join(", ");
+        tags.push(`<span class="micro locked" title="等待前置依赖: ${esc(depNames)}">🔒</span>`);
+      }
+      if (t.is_stale) {
+        tags.push(`<span class="micro stale" title="${esc(t.elapsed_minutes)}m 无新事件心跳 (lease ${esc(t.lease_minutes)}m)">stale</span>`);
+      }
+      return tags.join("");
+    }
+
+    function renderTaskRow(t, mode = "default") {
+      const isP0Bug = t.kind === "bug" && (t.severity === "P0" || t.priority === "P0") && t.phase !== "merged_pending_release";
+      const phaseCls =
+        t.phase === "needs_human" ? "needs-human" :
+        isP0Bug ? "p0-bug" :
+        t.phase === "blocked" ? "blocked" :
+        t.phase === "merged_pending_release" ? "merged" : "";
+      const selectedCls = state.selectedTaskId === t.task_id ? "selected" : "";
+
+      // Layer 2 ultra-faint mono telemetry
+      const tele = [];
+      tele.push(`<span>${esc(t.project_slug)}</span>`);
+      if (t.prs?.length) {
+        const pr = t.prs[0];
+        tele.push(`<a class="tele-link" href="${esc(safeUrl(pr.url))}" target="_blank" rel="noreferrer" data-stop="1">#${esc(pr.number || "?")}</a>`);
+      }
+      if (t.pull_request?.head_sha) {
+        tele.push(`<span>${esc(shortSha(t.pull_request.head_sha))}</span>`);
+      }
+      if (t.active_model) {
+        tele.push(`<span>${esc(t.active_model)}</span>`);
+      }
+      if (t.review_rounds > 0) {
+        const rev = t.latest_review;
+        const rCls = rev?.status === "pass" ? "color:var(--sig-green)" : rev ? "color:var(--sig-amber)" : "";
+        tele.push(`<span style="${rCls}">R${esc(t.review_rounds)}</span>`);
+      }
+      if (mode === "bug" || t.kind === "bug") {
+        if (t.source) tele.push(`<span>${esc(t.source)}</span>`);
+        tele.push(`<span>${t.owner === "team" ? "team" : "me"}</span>`);
+      }
+      if (mode === "backlog") {
+        tele.push(`<span>${t.owner === "team" ? "team" : "me"}</span>`);
+      }
+      tele.push(`<span title="${esc(fmtTime(t.updated_at))}">${esc(fmtTime(t.updated_at, true))}</span>`);
+
+      const noteSnippet = (mode === "backlog" || mode === "bug") && t.next_step && t.next_step !== "-"
+        ? `<span class="tele-sep">·</span><span class="tele-note">${esc(t.next_step)}</span>`
+        : "";
+
+      // Hover-only lightweight actions
+      const quick = [];
+      const latestTh = getLatestThread(t);
+      if (mode === "backlog") {
+        quick.push(`<button class="quick-btn accent" data-quick-start="${esc(t.task_id)}" data-stop="1">开工</button>`);
+        quick.push(`<button class="quick-btn" data-quick-owner="${esc(t.task_id)}" data-stop="1">${t.owner === "team" ? "转我" : "切归属"}</button>`);
+      } else if (t.kind === "bug" && t.phase !== "merged_pending_release") {
+        quick.push(`<button class="quick-btn" data-bug-triage="investigate" data-task="${esc(t.task_id)}" data-stop="1">排查</button>`);
+        quick.push(`<button class="quick-btn accent" data-bug-triage="fix" data-task="${esc(t.task_id)}" data-stop="1">派修</button>`);
+        quick.push(`<button class="quick-btn" data-quick-owner="${esc(t.task_id)}" data-stop="1">${t.owner === "team" ? "转我" : "交团队"}</button>`);
+      } else {
+        if (latestTh) {
+          quick.push(`<a class="quick-link" href="${esc(safeUrl(latestTh.link))}" title="打开最新线程 (${esc(latestTh.label)})" data-stop="1">Thread ↗</a>`);
+        }
+        if (t.phase === "merged_pending_release" || t.phase === "completed") {
+          quick.push(`<button class="quick-btn" data-archive="${esc(t.task_id)}" data-stop="1">归档</button>`);
+        }
+      }
+
+      return `
+        <article class="task-row ${phaseCls} ${selectedCls}" data-open-task="${esc(t.task_id)}" tabindex="0" role="button" aria-label="${esc(t.title)}">
+          <div class="task-row-top">
+            <div class="task-row-left">
+              ${phaseDotHtml(t)}
+              <span class="task-row-title">${esc(t.title)}</span>
+            </div>
+            <div class="task-row-tags">${renderMicroTags(t)}</div>
+          </div>
+          <div class="task-row-sub">
+            <div class="task-telemetry">${tele.join('<span class="tele-sep">·</span>')}${noteSnippet}</div>
+            ${quick.length ? `<div class="task-row-quick">${quick.join("")}</div>` : ""}
+          </div>
+          ${renderDecisionButtons(t, false)}
+        </article>`;
+    }
+
+    function renderReleaseRow(r) {
+      const selectedCls = state.selectedTaskId === r.task_id ? "selected" : "";
+      const incTasks = r.included_tasks || [];
+      const prCount = r.included_pr_count || incTasks.length;
+      const migCount = r.migration_count || 0;
+      const clDone = r.checklist_done ?? 0;
+      const clTotal = r.checklist_total ?? 0;
+
+      const tags = [];
+      tags.push(`<span class="micro">${esc(incTasks.length)} 项 · ${esc(prCount)} PRs</span>`);
+      if (migCount > 0) {
+        tags.push(`<span class="micro db">含 ${esc(migCount)} 个 DB Migration</span>`);
+      }
+      tags.push(`<span class="micro ${clTotal > 0 && clDone === clTotal ? "pass" : ""}">${esc(clDone)}/${esc(clTotal)}</span>`);
+
+      const prSample = incTasks
+        .slice(0, 5)
+        .map((it) => {
+          const prNum = it.prs?.[0]?.number ? `#${it.prs[0].number}` : it.task_id.slice(0, 14);
+          return it.has_migration ? `${prNum} DB` : prNum;
+        })
+        .join(" · ");
+      const more = incTasks.length > 5 ? ` +${incTasks.length - 5}` : "";
+
+      return `
+        <article class="task-row ${selectedCls}" data-open-task="${esc(r.task_id)}" tabindex="0" role="button" aria-label="${esc(r.title)}">
+          <div class="task-row-top">
+            <div class="task-row-left">
+              ${phaseDotHtml(r)}
+              <span class="task-row-title">${esc(r.title)}</span>
+            </div>
+            <div class="task-row-tags">${tags.join("")}</div>
+          </div>
+          <div class="task-row-sub">
+            <div class="task-telemetry">
+              <span>${esc(r.project_slug)}</span>
+              <span class="tele-sep">·</span>
+              <span>${esc(r.phase)}</span>
+              ${prSample ? `<span class="tele-sep">·</span><span>${esc(prSample + more)}</span>` : ""}
+              <span class="tele-sep">·</span>
+              <span>${esc(fmtTime(r.updated_at, true))}</span>
+            </div>
+            <div class="task-row-quick">
+              <span class="quick-link">发版清单 →</span>
+            </div>
+          </div>
+        </article>`;
+    }
+
+    function renderSection(title, tasks, { mode = "default", collapsible = false, collapsed = false, toggleId = "", tone = "" } = {}) {
+      const toggleBtn = collapsible
+        ? `<button class="ghost xs" data-toggle="${esc(toggleId)}">${collapsed ? "展开" : "收起"}</button>`
+        : "";
+      const listCls = tone === "amber" ? "attention-list" : tone === "red" ? "danger-list" : "";
+      const dotHtml = tone === "amber" ? '<span class="dot warn"></span>' : tone === "red" ? '<span class="dot danger"></span>' : "";
+      const body = collapsed
+        ? ""
+        : tasks.length === 0
+          ? `<div class="empty">暂无记录</div>`
+          : `<div class="task-list ${listCls}">${tasks.map((t) => mode === "release" ? renderReleaseRow(t) : renderTaskRow(t, mode)).join("")}</div>`;
+
+      return `
+        <section class="section">
+          <div class="section-head">
+            <div class="section-title-wrap">
+              ${dotHtml}
+              <span class="section-title">${esc(title)}</span>
+              <span class="section-count">${esc(tasks.length)}</span>
+            </div>
+            ${toggleBtn}
+          </div>
+          ${body}
+        </section>`;
+    }
+
+    function renderArchiveChannel(snap) {
+      const q = state.query.trim().toLowerCase();
+      const archived = (snap.archived_recent || []).filter((a) => {
+        if (state.project && a.project_slug !== state.project) return false;
+        if (!q) return true;
+        return `${a.task_id} ${a.title} ${a.archive_reason || ""}`.toLowerCase().includes(q);
+      });
+      const inbox = (snap.inbox || []).filter((a) => {
+        if (state.project && a.project_slug && a.project_slug !== state.project) return false;
+        if (!q) return true;
+        return `${a.id} ${a.kind} ${a.task_id || ""} ${a.copy_command || ""}`.toLowerCase().includes(q);
+      });
+
+      const header = `
+        <div class="section-head" style="margin-bottom:10px">
+          <div class="sub-switch">
+            <button class="${state.archiveSub === "archived" ? "active" : ""}" data-archive-sub="archived">已归档 ${esc(snap.archived_count ?? 0)}</button>
+            <button class="${state.archiveSub === "dispatch" ? "active" : ""}" data-archive-sub="dispatch">触发日志 ${esc((snap.inbox || []).length)}</button>
+          </div>
+        </div>`;
+
+      if (state.archiveSub === "dispatch") {
+        if (inbox.length === 0) return header + `<div class="empty">暂无 Webhook / 队列触发记录</div>`;
+        return header + `
+          <div class="task-list">
+            ${inbox.map((a) => {
+              const tag = a.delivery === "t3-webhook"
+                ? `<span class="micro pass">webhook</span>`
+                : a.delivery === "webhook-failed"
+                  ? `<span class="micro p0">failed</span>`
+                  : `<span class="micro stale">local</span>`;
+              return `
+                <div class="task-row" style="cursor:default">
+                  <div class="task-row-top">
+                    <div class="task-row-left">
+                      <span class="task-row-title" style="font-size:12.5px">${esc(a.copy_command || a.title || a.kind)}</span>
+                    </div>
+                    <div class="task-row-tags">${tag}</div>
+                  </div>
+                  <div class="task-row-sub" style="padding-left:0">
+                    <div class="task-telemetry">
+                      <span>${esc(a.id)}</span>
+                      <span class="tele-sep">·</span>
+                      <span>${esc(a.kind)}</span>
+                      <span class="tele-sep">·</span>
+                      <span>${esc(fmtTime(a.ts, true))}</span>
+                      ${a.delivery_error ? `<span class="tele-sep">·</span><span style="color:var(--sig-red)">${esc(a.delivery_error)}</span>` : ""}
+                    </div>
+                    <div class="task-row-quick" style="opacity:0.85">
+                      <button class="quick-btn" data-copy-cmd="${esc(a.copy_command || "")}">复制</button>
+                    </div>
+                  </div>
+                </div>`;
+            }).join("")}
+          </div>`;
+      }
+
+      if (archived.length === 0) return header + `<div class="empty">暂无匹配归档任务</div>`;
+      return header + `
+        <div class="task-list">
+          ${archived.map((a) => {
+            const prMatch = a.pr_url ? String(a.pr_url).match(/\/pull\/(\d+)$/) : null;
+            return `
+              <div class="task-row" style="cursor:default">
+                <div class="task-row-top">
+                  <div class="task-row-left">
+                    <span class="dot live"></span>
+                    <span class="task-row-title">${esc(a.title)}</span>
+                  </div>
+                  <div class="task-row-tags">
+                    ${a.kind && a.kind !== "feature" ? `<span class="micro">${esc(a.kind)}</span>` : ""}
+                    ${a.priority && a.priority !== "-" ? `<span class="micro">${esc(a.priority)}</span>` : ""}
+                  </div>
+                </div>
+                <div class="task-row-sub">
+                  <div class="task-telemetry">
+                    <span>${esc(a.project_slug)}</span>
+                    ${prMatch ? `<span class="tele-sep">·</span><a class="tele-link" href="${esc(safeUrl(a.pr_url))}" target="_blank" rel="noreferrer">#${esc(prMatch[1])}</a>` : ""}
+                    ${a.archive_reason ? `<span class="tele-sep">·</span><span>${esc(a.archive_reason)}</span>` : ""}
+                    <span class="tele-sep">·</span>
+                    <span>${esc(fmtTime(a.archived_at, true))}</span>
+                  </div>
+                </div>
+              </div>`;
+          }).join("")}
+        </div>`;
+    }
+
+    function renderDrawer() {
+      const backdrop = document.getElementById("drawer-backdrop");
+      const bodyEl = document.getElementById("drawer-body");
+      const metaEl = document.getElementById("drawer-meta-bar");
+      if (!state.selectedTaskId || !state.snapshot) {
+        backdrop.classList.remove("open");
+        backdrop.setAttribute("aria-hidden", "true");
+        return;
+      }
+      const t = state.snapshot.active_tasks.find((x) => x.task_id === state.selectedTaskId);
+      if (!t) {
+        backdrop.classList.remove("open");
+        backdrop.setAttribute("aria-hidden", "true");
+        return;
+      }
+
+      const prevScroll = bodyEl.scrollTop;
+      backdrop.classList.add("open");
+      backdrop.setAttribute("aria-hidden", "false");
+
+      const phaseBadgeCls =
+        t.phase === "needs_human" ? "changes" :
+        t.phase === "blocked" ? "blocker" :
+        t.phase === "merged_pending_release" || t.phase === "completed" ? "pass" : "strong";
+
+      document.getElementById("drawer-badges").innerHTML =
+        `<span class="badge strong">${esc(t.project_slug)}</span>` +
+        `<span class="badge">${esc(t.kind)}</span>` +
+        `<span class="badge ${phaseBadgeCls}">${esc(t.phase)}</span>` +
+        (t.has_migration ? `<span class="badge changes">DB MIGRATION</span>` : "") +
+        (t.is_stale ? `<span class="badge changes">STALE ${esc(t.elapsed_minutes)}M</span>` : "") +
+        (t.prs || []).map((p) => `<a class="badge link" href="${esc(safeUrl(p.url))}" target="_blank" rel="noreferrer">#${esc(p.number || "?")} ↗</a>`).join("");
+
+      document.getElementById("drawer-title").textContent = t.title;
+      document.getElementById("drawer-subtitle").textContent =
+        `${t.task_id}${t.pull_request?.head_sha ? " · " + shortSha(t.pull_request.head_sha) : ""}${t.active_model ? " · " + t.active_model : ""} · ${fmtTime(t.updated_at)}`;
+
+      document.getElementById("drawer-extra-actions").innerHTML =
+        (t.is_stale ? `<button class="ghost sm" data-check-status="${esc(t.task_id)}">核对状态</button>` : "") +
+        (t.kind !== "release"
+          ? `<button class="ghost sm" data-archive="${esc(t.task_id)}">归档</button>`
+          : "");
+
+      // Compact inline metadata controls + clickable dependency chips
+      const priSel = `
+        <select class="inline-select" data-patch-field="priority" data-task="${esc(t.task_id)}" title="优先级">
+          ${["P0", "P1", "P2"].map((p) => `<option value="${p}" ${t.priority === p ? "selected" : ""}>${p}</option>`).join("")}
+        </select>`;
+      const sevSel = t.kind === "bug"
+        ? `<select class="inline-select" data-patch-field="severity" data-task="${esc(t.task_id)}" title="Bug 严重度">
+            ${["P0", "P1", "P2", "P3"].map((s) => `<option value="${s}" ${(t.severity || "P1") === s ? "selected" : ""}>Sev ${s}</option>`).join("")}
+          </select>`
+        : "";
+      const ownerSel = `
+        <select class="inline-select" data-patch-field="owner" data-task="${esc(t.task_id)}" title="归属">
+          <option value="me" ${t.owner === "me" ? "selected" : ""}>owner: me</option>
+          <option value="team" ${t.owner === "team" ? "selected" : ""}>owner: team</option>
+        </select>`;
+      const bucketSel = t.phase === "backlog"
+        ? `<select class="inline-select" data-patch-field="bucket" data-task="${esc(t.task_id)}" title="Backlog 分区">
+            <option value="must" ${(t.bucket || "must") === "must" ? "selected" : ""}>明确要做</option>
+            <option value="maybe" ${t.bucket === "maybe" ? "selected" : ""}>可能亲自做</option>
+            <option value="team" ${t.bucket === "team" ? "selected" : ""}>团队想法</option>
+          </select>`
+        : "";
+      const phaseSel = `
+        <select class="inline-select" data-patch-field="phase" data-task="${esc(t.task_id)}" title="阶段">
+          ${["backlog", "intake", "in_progress", "in_review", "blocked", "needs_human", "merged_pending_release"].map((ph) => `<option value="${ph}" ${t.phase === ph ? "selected" : ""}>${ph}</option>`).join("")}
+        </select>`;
+
+      const depsHtml = (t.resolved_deps || []).map((d) =>
+        `<button class="dep-chip ${d.satisfied ? "done" : "locked"}" data-jump-task="${esc(d.task_id)}" title="前置依赖 (${esc(d.phase)}): ${esc(d.title)}">${d.satisfied ? "✓" : "🔒"} ${esc(d.task_id)}</button>`
+      ).join("");
+
+      metaEl.innerHTML = `${priSel}${sevSel}${ownerSel}${bucketSel}${phaseSel}${depsHtml}<button class="ghost xs" data-edit-deps="${esc(t.task_id)}">+ 依赖</button>`;
+
+      // Build context-adaptive middle panels
+      const sections = [];
+
+      if (t.phase === "needs_human") {
+        sections.push(`
+          <div class="panel" style="border-color:var(--sig-amber-border);background:linear-gradient(180deg, var(--sig-amber-bg), var(--bg-card))">
+            <div class="panel-head"><h4 class="panel-title">HUMAN DECISION</h4><span class="dot warn"></span></div>
+            ${renderDecisionButtons(t, true)}
+          </div>`);
+      }
+
+      if (t.kind === "release") {
+        const inc = t.included_tasks || [];
+        const incHtml = inc.length === 0
+          ? `<div class="eyebrow">暂无待发版 PR (merged_pending_release)</div>`
+          : inc.map((it) => {
+              const prLinks = (it.prs || []).map((p) =>
+                `<a class="badge link" href="${esc(safeUrl(p.url))}" target="_blank" rel="noreferrer">#${esc(p.number || "?")} ↗</a>`
+              ).join("");
+              return `
+                <div class="rel-pr-row">
+                  <div class="rel-pr-main">
+                    ${it.has_migration ? `<span class="micro db">DB</span>` : ""}
+                    <span class="rel-pr-title" data-jump-task="${esc(it.task_id)}">${esc(it.title)}</span>
+                  </div>
+                  <div class="badges" style="flex-shrink:0">${prLinks || `<span class="badge">${esc(it.priority)}</span>`}</div>
+                </div>`;
+            }).join("");
+
+        const cl = t.checklist || [];
+        const clHtml = cl.length === 0
+          ? `<div class="eyebrow">无检查项</div>`
+          : cl.map((item, idx) => `
+              <label class="check-row ${item.done ? "done" : ""}">
+                <input type="checkbox" data-toggle-check="${idx}" data-task="${esc(t.task_id)}" ${item.done ? "checked" : ""} />
+                <span>${esc(item.label)}</span>
+              </label>`).join("");
+
+        sections.push(`
+          <div class="panel">
+            <div class="panel-head">
+              <h4 class="panel-title">INCLUDED PRS · MERGED PENDING RELEASE</h4>
+              <span class="section-count">${esc(inc.length)} tasks · ${esc(t.included_pr_count || 0)} PRs${t.migration_count ? ` · ${t.migration_count} DB` : ""}</span>
+            </div>
+            ${incHtml}
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h4 class="panel-title">RELEASE CHECKLIST</h4>
+              <span class="section-count">${esc(t.checklist_done)}/${esc(t.checklist_total)}</span>
+            </div>
+            <div>${clHtml}</div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <span class="eyebrow">仅在 Prod 升级验证完成后执行</span>
+              <button class="primary sm" data-complete-release="${esc(t.task_id)}">确认已发 Prod 并批量归档 (${esc(inc.length)})</button>
+            </div>
+          </div>`);
+      } else {
+        // Backlog or Bug quick strip
+        if (t.phase === "backlog") {
+          sections.push(`
+            <div class="panel">
+              <div class="panel-head"><h4 class="panel-title">BACKLOG ACTIONS</h4></div>
+              ${t.next_step ? `<div class="drawer-next">${esc(t.next_step)}</div>` : ""}
+              <div class="badges">
+                <button class="primary sm" data-quick-start="${esc(t.task_id)}">立项开工 → Now</button>
+                <button class="sm" data-quick-start-investigate="${esc(t.task_id)}">先做只读调研</button>
+                <button class="ghost sm" data-edit-note="${esc(t.task_id)}">编辑说明</button>
+              </div>
+            </div>`);
+        } else {
+          const bugStrip = t.kind === "bug" && t.phase !== "merged_pending_release"
+            ? `<div class="badges" style="margin-bottom:10px">
+                 <button class="sm" data-bug-triage="investigate" data-task="${esc(t.task_id)}">派只读排查</button>
+                 <button class="primary sm" data-bug-triage="fix" data-task="${esc(t.task_id)}">派修 Bug</button>
+                 <button class="ghost sm" data-quick-owner="${esc(t.task_id)}">${t.owner === "team" ? "转回我处理" : "交团队处理"}</button>
+               </div>`
+            : "";
+
+          const gates = t.gates || {};
+          const revSat = Boolean(gates.independent_review_pass?.satisfied);
+          const mergeApp = Boolean(gates.merge_authorization?.approved);
+          const deployPol = gates.deploy_authorization?.policy || "forbidden";
+
+          const allThreads = [];
+          if (t.threads?.implementer) allThreads.push({ label: "Impl", ...t.threads.implementer });
+          (t.threads?.reviewers || []).forEach((r, i) => allThreads.push({ label: `Rev R${i + 1}`, ...r }));
+          (t.threads?.investigators || []).forEach((r, i) => allThreads.push({ label: `Inv #${i + 1}`, ...r }));
+          if (t.threads?.merger) allThreads.push({ label: "Merger", ...t.threads.merger });
+
+          const threadChips = allThreads.length > 0
+            ? `<div class="badges" style="margin-top:9px">${allThreads.map((th) =>
+                th.t3_link
+                  ? `<a class="thread-chip" href="${esc(safeUrl(th.t3_link))}">${esc(th.label)}${th.model ? " · " + esc(th.model) : ""} ↗</a>`
+                  : `<span class="thread-chip">${esc(th.label)}</span>`
+              ).join("")}</div>`
+            : "";
+
+          sections.push(`
+            <div class="panel">
+              <div class="panel-head">
+                <h4 class="panel-title">SUMMARY & GATES</h4>
+                <button class="ghost xs" data-edit-note="${esc(t.task_id)}">编辑</button>
+              </div>
+              ${bugStrip}
+              <div class="drawer-next">${esc(t.next_step || "-")}</div>
+              <div class="gate-grid">
+                <div class="gate-cell">
+                  <span class="eyebrow">REVIEW GATE</span>
+                  <span class="gate-val"><span class="dot ${revSat ? "live" : "warn"}"></span><span>${revSat ? "PASS @" + esc(shortSha(gates.independent_review_pass?.verified_head_sha)) : "PENDING"}</span></span>
+                </div>
+                <div class="gate-cell">
+                  <span class="eyebrow">MERGE POLICY</span>
+                  <span class="gate-val"><span class="dot ${mergeApp ? "live" : ""}"></span><span>${esc(gates.merge_authorization?.policy || "-")}${mergeApp ? " · OK" : ""}</span></span>
+                </div>
+                <div class="gate-cell">
+                  <span class="eyebrow">DEPLOY</span>
+                  <span class="gate-val"><span class="dot"></span><span>${esc(deployPol)}</span></span>
+                </div>
+              </div>
+              ${threadChips}
+            </div>`);
+        }
+
+        // Structured Receipts & Open Risks (compact)
+        const receipts = t.receipts || [];
+        if (receipts.length > 0) {
+          if (state.selectedReceiptIdx >= receipts.length) state.selectedReceiptIdx = 0;
+          const cur = receipts[state.selectedReceiptIdx];
+          const findings = Array.isArray(cur.findings) ? cur.findings : [];
+          const risks = Array.isArray(cur.open_risks) ? cur.open_risks : [];
+          const tabs = receipts.map((r, idx) =>
+            `<button class="receipt-tab ${idx === state.selectedReceiptIdx ? "active" : ""}" data-receipt-idx="${idx}">${esc(r.step_id)} · ${esc(r.role)}</button>`
+          ).join("");
+
+          const findingsHtml = findings.length === 0
+            ? `<div class="eyebrow">0 FINDINGS</div>`
+            : findings.map((f) => {
+                const sevCls = f.severity === "blocker" ? "blocker" : f.severity === "major" ? "changes" : "";
+                const rowSev = f.severity === "blocker" ? "sev-blocker" : f.severity === "major" ? "sev-major" : "";
+                const stCls = f.status === "resolved" ? "pass" : sevCls;
+                return `
+                  <div class="finding-row ${rowSev}">
+                    <div class="badges">
+                      <span class="badge ${sevCls}">${esc(f.id)} · ${esc(f.severity)}</span>
+                      <span class="badge ${stCls}">${esc(f.status)}</span>
+                      ${f.location ? `<span class="time" style="white-space:normal;word-break:break-all">${esc(f.location)}</span>` : ""}
+                    </div>
+                    <div class="finding-summary">${esc(f.summary)}</div>
+                    ${f.repro_or_evidence ? `<div class="finding-evidence">${esc(f.repro_or_evidence)}</div>` : ""}
+                  </div>`;
+              }).join("");
+
+          const risksHtml = risks.length === 0
+            ? ""
+            : `<div class="sub-heading"><span>Open Risks</span><span>${esc(risks.length)}</span></div>` +
+              risks.map((r) => `<div class="risk-row">${esc(typeof r === "string" ? r : (r?.summary || r?.description || JSON.stringify(r)))}</div>`).join("");
+
+          sections.push(`
+            <div class="panel">
+              <div class="panel-head">
+                <h4 class="panel-title">RECEIPTS & OPEN RISKS</h4>
+                <span class="section-count">${esc(cur.status)} · ${esc(cur.checks_pass)}/${esc(cur.checks_total)} checks</span>
+              </div>
+              <div class="receipt-tabs">${tabs}</div>
+              ${cur.next_recommendation ? `<div class="drawer-next">${esc(cur.next_recommendation)}</div>` : ""}
+              <div class="sub-heading"><span>Findings</span><span>${esc(findings.length)}</span></div>
+              ${findingsHtml}
+              ${risksHtml}
+            </div>`);
+        }
+      }
+
+      // Unified Vercel Board Thread Timeline
+      const threadItems = t.thread || [];
+      const threadHtml = threadItems.length === 0
+        ? `<div class="eyebrow">NO THREAD ACTIVITY YET</div>`
+        : `<div class="thread-stream">${threadItems.map((m) => {
+            const actorCls = m.actor === "you" ? "you" : ["neon", "astra", "sol", "opus"].includes(m.actor) ? "model" : "";
+            const msgCls =
+              m.kind === "steer" ? "kind-steer" :
+              m.kind === "comment" ? "kind-comment" :
+              m.kind === "receipt" ? (m.status === "pass" ? "kind-receipt-pass" : "kind-receipt-changes") :
+              m.kind === "phase" ? "kind-phase" : "";
+            return `
+              <div class="thread-msg ${msgCls}">
+                <div class="thread-msg-head">
+                  <div class="thread-actor-wrap">
+                    <span class="actor-pill ${actorCls}">${esc(m.actor || "system")}</span>
+                    <span class="thread-msg-title">${esc(m.title)}</span>
+                  </div>
+                  <span class="time" title="${esc(fmtTime(m.ts))}">${esc(fmtTime(m.ts, true))}</span>
+                </div>
+                ${m.body ? `<div class="thread-msg-body">${esc(m.body)}</div>` : ""}
+              </div>`;
+          }).join("")}</div>`;
+
+      sections.push(`
+        <div class="panel">
+          <div class="panel-head">
+            <h4 class="panel-title">THREAD</h4>
+            <span class="section-count">${esc(threadItems.length)}</span>
+          </div>
+          ${threadHtml}
+        </div>`);
+
+      bodyEl.innerHTML = sections.join("");
+      bodyEl.scrollTop = prevScroll;
+    }
+
+    function render() {
+      const snap = state.snapshot;
+      if (!snap) return;
+
+      updateStatusBadge();
+
+      // Project filter options
+      const projSel = document.getElementById("project-filter");
+      const projSlugs = getProjectSlugs();
+      projSel.innerHTML =
+        `<option value="">全部</option>` +
+        projSlugs.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+      projSel.value = state.project;
+
+      // 5-Channel tabs with subtle dot alerts
+      const c = snap.counts || {};
+      const nowDot = (c.p0_bugs ?? 0) > 0 ? "danger" : (c.needs_human ?? 0) > 0 ? "warn" : "";
+      const bugsDot = (c.p0_bugs ?? 0) > 0 ? "danger" : "";
+      const tabMeta = {
+        now: { label: "Now", count: c.now ?? 0, dot: nowDot },
+        bugs: { label: "Bugs", count: c.bugs ?? 0, dot: bugsDot },
+        backlog: { label: "Backlog", count: c.backlog ?? 0, dot: "" },
+        releases: { label: "Releases", count: c.releases ?? 0, dot: "" },
+        archive: { label: "Archive", count: c.archive ?? 0, dot: "" },
+      };
+      document.querySelectorAll("#view-tabs .tab").forEach((b) => {
+        const v = b.dataset.view;
+        const m = tabMeta[v] || { label: v, count: 0, dot: "" };
+        b.classList.toggle("active", v === state.view);
+        b.innerHTML =
+          `${m.dot ? `<span class="dot ${m.dot}"></span>` : ""}` +
+          `<span>${esc(m.label)}</span>` +
+          `<span class="tab-count">${esc(m.count)}</span>`;
+      });
+
+      const filtered = filterTasks(snap.active_tasks || []);
+      const root = document.getElementById("app-content");
+
+      if (state.view === "now") {
+        const nowAll = filtered.filter(isNowTask);
+        const used = new Set();
+        const take = (fn) => {
+          const arr = nowAll.filter((t) => !used.has(t.task_id) && fn(t));
+          arr.forEach((t) => used.add(t.task_id));
+          return arr;
+        };
+        const nh = take((t) => t.phase === "needs_human");
+        const p0Bugs = take((t) => t.kind === "bug" && (t.severity === "P0" || t.priority === "P0"));
+        const inProg = take((t) => t.phase === "in_progress");
+        const inRev = take((t) => t.phase === "in_review");
+        const blocked = take((t) => t.phase === "blocked");
+        const intake = take((t) => t.phase === "intake");
+        const other = take(() => true);
+
+        const parts = [];
+        if (nh.length > 0) parts.push(renderSection("NEEDS HUMAN", nh, { tone: "amber" }));
+        if (p0Bugs.length > 0) parts.push(renderSection("P0 BUGS", p0Bugs, { mode: "bug", tone: "red" }));
+        if (inProg.length > 0) parts.push(renderSection("IN PROGRESS", inProg));
+        if (inRev.length > 0) parts.push(renderSection("IN REVIEW", inRev));
+        if (blocked.length > 0) parts.push(renderSection("BLOCKED", blocked));
+        if (intake.length > 0) parts.push(renderSection("INTAKE", intake));
+        if (other.length > 0) parts.push(renderSection("OTHER", other));
+
+        root.innerHTML = parts.length > 0 ? parts.join("") : `<div class="empty">NOW 频道清空 — 可从 Backlog 立项或通过「+ 新建」录入任务</div>`;
+      } else if (state.view === "bugs") {
+        const sevRank = { P0: 0, P1: 1, P2: 2, P3: 3 };
+        const bugs = filtered
+          .filter((t) => t.kind === "bug")
+          .sort((a, b) => (sevRank[a.severity] ?? 9) - (sevRank[b.severity] ?? 9));
+        const myBugs = bugs.filter((b) => b.owner !== "team");
+        const teamBugs = bugs.filter((b) => b.owner === "team");
+        const parts = [];
+        if (myBugs.length > 0) parts.push(renderSection("MY BUGS · 待我处理", myBugs, { mode: "bug", tone: myBugs.some((b) => b.severity === "P0") ? "red" : "" }));
+        if (teamBugs.length > 0) parts.push(renderSection("TEAM BUGS · 已交团队", teamBugs, { mode: "bug" }));
+        root.innerHTML = parts.length > 0 ? parts.join("") : `<div class="empty">暂无活跃 Bug — 点击右上角「+ 新建 → 记一个 Bug」10 秒快录</div>`;
+      } else if (state.view === "backlog") {
+        const priRank = { P0: 0, P1: 1, P2: 2, "-": 3 };
+        const sortBl = (arr) => arr.sort((a, b) => (priRank[a.priority] ?? 9) - (priRank[b.priority] ?? 9));
+        const bl = filtered.filter((t) => t.phase === "backlog");
+        const must = sortBl(bl.filter((t) => (t.bucket || "must") === "must"));
+        const maybe = sortBl(bl.filter((t) => t.bucket === "maybe"));
+        const team = sortBl(bl.filter((t) => t.bucket === "team"));
+        root.innerHTML = [
+          renderSection("明确要做 · MUST", must, { mode: "backlog" }),
+          renderSection("可能亲自做 · MAYBE", maybe, { mode: "backlog" }),
+          renderSection("团队想法 · TEAM", team, { mode: "backlog" }),
+        ].join("");
+      } else if (state.view === "releases") {
+        const rels = filtered.filter((t) => t.kind === "release");
+        const merged = filtered.filter((t) => t.phase === "merged_pending_release" && t.kind !== "release");
+        const parts = [];
+        parts.push(
+          rels.length > 0
+            ? renderSection("RELEASE TRAINS · 发版车次", rels, { mode: "release" })
+            : `<div class="empty" style="margin-bottom:16px">暂无活跃发版车次 — 点击「+ 新建 → 建发版车次」</div>`
+        );
+        if (merged.length > 0) {
+          parts.push(renderSection("MERGED PENDING RELEASE · 待发版合入清单", merged, {
+            collapsible: true,
+            collapsed: state.mergedCollapsed,
+            toggleId: "merged",
+          }));
+        }
+        root.innerHTML = parts.join("");
+      } else {
+        root.innerHTML = renderArchiveChannel(snap);
+      }
+
+      renderDrawer();
+    }
+
+    function openCreateModal(kind) {
+      closeCreateMenu();
+      const defaultProj = state.project || getProjectSlugs()[0] || "example";
+
+      if (kind === "new_feature") {
+        openModal(
+          "新需求 / Backlog",
+          `${getProjectOptionsDatalist()}
+           <div class="field-row-3">
+             <div class="field"><label>项目</label><input class="input" id="m-proj" list="zstack-proj-list" value="${esc(defaultProj)}" /></div>
+             <div class="field"><label>优先级</label><select class="input" id="m-pri"><option>P0</option><option selected>P1</option><option>P2</option></select></div>
+             <div class="field"><label>去向</label><select class="input" id="m-dest"><option value="backlog:must">Backlog · 明确要做</option><option value="backlog:maybe">Backlog · 可能亲自做</option><option value="backlog:team">Backlog · 团队想法</option><option value="now:implement">立即立项开工</option><option value="now:investigate">立即只读调研</option></select></div>
+           </div>
+           <div class="field"><label>标题</label><input class="input" id="m-title" placeholder="简洁明确的功能标题" /></div>
+           <div class="field"><label>说明 / 约束（可选）</label><textarea class="input" id="m-note" placeholder="目标、范围、前置条件或验收标准..."></textarea></div>`,
+          async () => {
+            const title = document.getElementById("m-title").value.trim();
+            if (!title) { showToast("请填写标题", "", "warn"); return; }
+            const dest = document.getElementById("m-dest").value;
+            const [destKind, destSub] = dest.split(":");
+            const isBacklog = destKind === "backlog";
+            const res = await apiRequest("POST", "/api/items", {
+              kind: "feature",
+              project_slug: document.getElementById("m-proj").value.trim() || defaultProj,
+              priority: document.getElementById("m-pri").value,
+              phase: isBacklog ? "backlog" : "intake",
+              bucket: isBacklog ? destSub : undefined,
+              owner: isBacklog && destSub === "team" ? "team" : "me",
+              title,
+              note: document.getElementById("m-note").value.trim(),
+              dispatch_mode: isBacklog ? "none" : destSub,
+            });
+            reportWebhookResult(res, isBacklog ? "已加入活 Backlog" : "已立项进入 Now");
+            state.view = isBacklog ? "backlog" : "now";
+            closeModal();
+            await refreshSnapshot();
+          },
+          "创建"
+        );
+      } else if (kind === "new_bug") {
+        openModal(
+          "10 秒快录 Bug",
+          `${getProjectOptionsDatalist()}
+           <div class="field-row-3">
+             <div class="field"><label>项目</label><input class="input" id="m-proj" list="zstack-proj-list" value="${esc(defaultProj)}" /></div>
+             <div class="field"><label>严重度</label><select class="input" id="m-sev"><option value="P0">P0 · 阻断</option><option value="P1" selected>P1 · 严重</option><option value="P2">P2 · 一般</option><option value="P3">P3 · 轻微</option></select></div>
+             <div class="field"><label>归属</label><select class="input" id="m-owner"><option value="me" selected>我处理 (me)</option><option value="team">交团队 (team)</option></select></div>
+           </div>
+           <div class="field-row">
+             <div class="field"><label>来源</label><select class="input" id="m-source"><option value="developer">developer</option><option value="slack">slack</option><option value="prod-alert">prod-alert</option><option value="manual">manual</option></select></div>
+             <div class="field"><label>立即动作</label><select class="input" id="m-dispatch"><option value="none" selected>仅入池 (intake)</option><option value="investigate">立即派只读排查</option><option value="fix">立即派修 (Implementer)</option></select></div>
+           </div>
+           <div class="field"><label>Bug 标题</label><input class="input" id="m-title" placeholder="例如：SSO 回调在多子域下偶发 401" /></div>
+           <div class="field"><label>复现线索 / Trace / 报错详情（可选）</label><textarea class="input" id="m-note" placeholder="粘贴错误摘要、租户/环境线索、复现步骤..."></textarea></div>`,
+          async () => {
+            const title = document.getElementById("m-title").value.trim();
+            if (!title) { showToast("请填写 Bug 标题", "", "warn"); return; }
+            const dispatchMode = document.getElementById("m-dispatch").value;
+            const res = await apiRequest("POST", "/api/items", {
+              kind: "bug",
+              project_slug: document.getElementById("m-proj").value.trim() || defaultProj,
+              severity: document.getElementById("m-sev").value,
+              owner: document.getElementById("m-owner").value,
+              source: document.getElementById("m-source").value,
+              title,
+              note: document.getElementById("m-note").value.trim(),
+              dispatch_mode: dispatchMode,
+            });
+            reportWebhookResult(res, "Bug 已录入");
+            state.view = "bugs";
+            closeModal();
+            await refreshSnapshot();
+          },
+          "录入 Bug"
+        );
+      } else if (kind === "new_release") {
+        openModal(
+          "新建发版车次",
+          `${getProjectOptionsDatalist()}
+           <div class="field-row">
+             <div class="field"><label>项目</label><input class="input" id="m-proj" list="zstack-proj-list" value="${esc(defaultProj)}" /></div>
+             <div class="field"><label>优先级</label><select class="input" id="m-pri"><option>P0</option><option selected>P1</option><option>P2</option></select></div>
+           </div>
+           <div class="field"><label>车次标题</label><input class="input" id="m-title" placeholder="例如：v1.0.0 发版车次" /></div>
+           <div class="field"><label>发版备注（可选）</label><textarea class="input" id="m-note" placeholder="将自动汇总该项目所有 merged_pending_release 任务并生成标准发版检查清单..."></textarea></div>`,
+          async () => {
+            const title = document.getElementById("m-title").value.trim();
+            if (!title) { showToast("请填写发版车次标题", "", "warn"); return; }
+            await apiRequest("POST", "/api/items", {
+              kind: "release",
+              project_slug: document.getElementById("m-proj").value.trim() || defaultProj,
+              priority: document.getElementById("m-pri").value,
+              phase: "intake",
+              title,
+              note: document.getElementById("m-note").value.trim(),
+              dispatch_mode: "none",
+            });
+            showToast("发版车次已创建", title, "ok");
+            state.view = "releases";
+            closeModal();
+            await refreshSnapshot();
+          },
+          "创建车次"
+        );
+      } else if (kind === "review_pr") {
+        openModal(
+          "审外部 PR（固定 SHA 独立复审）",
+          `<div class="field"><label>PR 编号或完整 URL</label><input class="input" id="m-pr" placeholder="例如：123 或 https://github.com/owner/repo/pull/123" /></div>
+           <div class="field"><label>重点关注点（可选）</label><textarea class="input" id="m-note" placeholder="例如：重点检查 PG17 唯一索引与并发安全..."></textarea></div>`,
+          async () => {
+            const raw = document.getElementById("m-pr").value.trim();
+            if (!raw) { showToast("请输入 PR 编号或 URL", "", "warn"); return; }
+            const isNum = /^\d+$/.test(raw);
+            const canonicalRepo = state.snapshot?.projects?.find((p) => p.slug === defaultProj)?.canonical_repo || "";
+            const repo = canonicalRepo.match(/^(?:https:\/\/)?github\.com\/([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/i)?.[1];
+            if (isNum && !repo) { showToast("请提供完整 PR URL", "", "warn"); return; }
+            await triggerAction({
+              kind: "review_pr",
+              project_slug: defaultProj,
+              pr_number: isNum ? Number(raw) : null,
+              pr_url: isNum ? `https://github.com/${repo}/pull/${raw}` : raw,
+              note: document.getElementById("m-note").value.trim(),
+            });
+            closeModal();
+          },
+          "派发复审"
+        );
+      }
+    }
+
+    // Create dropdown toggle
+    document.getElementById("btn-create-menu").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dd = document.getElementById("create-dropdown");
+      const willOpen = !dd.classList.contains("open");
+      dd.classList.toggle("open", willOpen);
+      e.currentTarget.setAttribute("aria-expanded", String(willOpen));
+    });
+
+    // Inline drawer select changes (priority / severity / owner / bucket / phase)
+    document.addEventListener("change", async (e) => {
+      const sel = e.target.closest("[data-patch-field]");
+      if (sel) {
+        const field = sel.dataset.patchField;
+        const taskId = sel.dataset.task;
+        await patchTask(taskId, { [field]: sel.value }, `已更新 ${field}`);
+        return;
+      }
+
+      const chk = e.target.closest("[data-toggle-check]");
+      if (chk) {
+        const taskId = chk.dataset.task;
+        const idx = Number(chk.dataset.toggleCheck);
+        const t = state.snapshot?.active_tasks?.find((x) => x.task_id === taskId);
+        if (!t || !Array.isArray(t.checklist)) return;
+        const nextList = t.checklist.map((item, i) => i === idx ? { ...item, done: chk.checked } : item);
+        await patchTask(taskId, { checklist: nextList });
+        return;
+      }
+    });
+
+    // Delegated UI click interactions
+    document.addEventListener("click", async (e) => {
+      if (!e.target.closest("#create-dropdown")) closeCreateMenu();
+
+      const createAct = e.target.closest("[data-create-action]");
+      if (createAct) { openCreateModal(createAct.dataset.createAction); return; }
+
+      const tab = e.target.closest("#view-tabs .tab");
+      if (tab) { state.view = tab.dataset.view; render(); return; }
+
+      const archSub = e.target.closest("[data-archive-sub]");
+      if (archSub) { state.archiveSub = archSub.dataset.archiveSub; render(); return; }
+
+      const tog = e.target.closest("[data-toggle]");
+      if (tog && tog.dataset.toggle === "merged") { state.mergedCollapsed = !state.mergedCollapsed; render(); return; }
+
+      const recTab = e.target.closest("[data-receipt-idx]");
+      if (recTab) { state.selectedReceiptIdx = Number(recTab.dataset.receiptIdx); renderDrawer(); return; }
+
+      const copyBtn = e.target.closest("[data-copy-cmd]");
+      if (copyBtn) { copyToClipboard(copyBtn.dataset.copyCmd); return; }
+
+      // Jump to dependency or release included task
+      const jumpBtn = e.target.closest("[data-jump-task]");
+      if (jumpBtn) {
+        e.stopPropagation();
+        const tid = jumpBtn.dataset.jumpTask;
+        const exists = state.snapshot?.active_tasks?.some((x) => x.task_id === tid);
+        if (exists) {
+          state.selectedTaskId = tid;
+          state.selectedReceiptIdx = 0;
+          render();
+        } else {
+          showToast("该前置任务已归档或不在活跃列表", tid, "warn");
+        }
+        return;
+      }
+
+      // Quick start backlog item -> instant phase=intake + Webhook dispatch -> moves into Now immediately!
+      const startBtn = e.target.closest("[data-quick-start], [data-quick-start-investigate]");
+      if (startBtn) {
+        e.stopPropagation();
+        const isInv = Boolean(startBtn.dataset.quickStartInvestigate);
+        const taskId = startBtn.dataset.quickStart || startBtn.dataset.quickStartInvestigate;
+        const t = state.snapshot?.active_tasks?.find((x) => x.task_id === taskId);
+        if (!t) return;
+        openModal(
+          `${isInv ? "只读调研" : "立项开工"} · ${t.title}`,
+          `<div class="field">
+             <label>说明</label>
+             <div style="font-size:12px;color:var(--fg-secondary);line-height:1.5">将立即把 <span class="mono">${esc(taskId)}</span> 从 Backlog 移入 <span class="mono">Now (intake)</span>，刷新 <span class="mono">BACKLOG.md / BOARD.md</span> 并通过 Webhook 唤醒 Orchestrator。</div>
+           </div>
+           <div class="field">
+             <label>范围说明 / 约束（可选）</label>
+             <textarea class="input" id="m-note" placeholder="例如：先完成最小闭环，严格零 DB 迁移..."></textarea>
+           </div>`,
+          async () => {
+            const note = document.getElementById("m-note").value.trim();
+            await patchTask(taskId, {
+              phase: "intake",
+              dispatch: { kind: "start_backlog", mode: isInv ? "investigate" : "implement", note },
+            });
+            closeModal();
+          },
+          isInv ? "进入 Now 并调研" : "立项开工"
+        );
+        return;
+      }
+
+      // Quick toggle owner (me <-> team)
+      const ownerBtn = e.target.closest("[data-quick-owner]");
+      if (ownerBtn) {
+        e.stopPropagation();
+        const taskId = ownerBtn.dataset.quickOwner;
+        const t = state.snapshot?.active_tasks?.find((x) => x.task_id === taskId);
+        if (!t) return;
+        const nextOwner = t.owner === "team" ? "me" : "team";
+        const patch = { owner: nextOwner };
+        if (t.phase === "backlog") patch.bucket = nextOwner === "team" ? "team" : "must";
+        await patchTask(taskId, patch, `归属已切换为 ${nextOwner}`);
+        return;
+      }
+
+      // Bug triage quick actions (investigate / fix)
+      const bugBtn = e.target.closest("[data-bug-triage]");
+      if (bugBtn) {
+        e.stopPropagation();
+        const mode = bugBtn.dataset.bugTriage;
+        const taskId = bugBtn.dataset.task;
+        const t = state.snapshot?.active_tasks?.find((x) => x.task_id === taskId);
+        if (!t) return;
+        openModal(
+          `${mode === "investigate" ? "派只读排查" : "派修 Bug"} · ${t.title}`,
+          `<div class="field">
+             <label>目标</label>
+             <div class="badges"><span class="badge strong">${esc(t.project_slug)}</span><span class="badge ${t.severity === "P0" ? "blocker" : ""}">${esc(t.severity || "P1")}</span></div>
+           </div>
+           <div class="field">
+             <label>补充上下文 / 线索（可选）</label>
+             <textarea class="input" id="m-note" placeholder="例如：只读排查 prod-aws 日志，不要改动线上配置..."></textarea>
+           </div>`,
+          async () => {
+            const note = document.getElementById("m-note").value.trim();
+            await patchTask(taskId, {
+              phase: "in_progress",
+              owner: "me",
+              dispatch: { kind: "triage_bug", mode, note },
+            });
+            closeModal();
+          },
+          mode === "investigate" ? "派发只读排查" : "派发修复"
+        );
+        return;
+      }
+
+      // Edit dependencies inline modal
+      const editDepsBtn = e.target.closest("[data-edit-deps]");
+      if (editDepsBtn) {
+        e.stopPropagation();
+        const taskId = editDepsBtn.dataset.editDeps;
+        const t = state.snapshot?.active_tasks?.find((x) => x.task_id === taskId);
+        if (!t) return;
+        const allIds = (state.snapshot?.active_tasks || []).map((x) => x.task_id).filter((id) => id !== taskId);
+        openModal(
+          `前置依赖 · ${taskId}`,
+          `<div class="field">
+             <label>依赖的 task_id（逗号分隔）</label>
+             <input class="input mono" id="m-deps" value="${esc((t.depends_on || []).join(", "))}" placeholder="例如：example-core-update" />
+             <div style="font-size:11px;color:var(--fg-dim);margin-top:4px">当前活跃任务参考：${esc(allIds.slice(0, 6).join(", "))}</div>
+           </div>`,
+          async () => {
+            const raw = document.getElementById("m-deps").value;
+            const deps = raw.split(",").map((x) => x.trim()).filter(Boolean);
+            await patchTask(taskId, { depends_on: deps }, "已更新前置依赖");
+            closeModal();
+          },
+          "保存依赖"
+        );
+        return;
+      }
+
+      // Edit next_step / note modal
+      const editNoteBtn = e.target.closest("[data-edit-note]");
+      if (editNoteBtn) {
+        e.stopPropagation();
+        const taskId = editNoteBtn.dataset.editNote;
+        const t = state.snapshot?.active_tasks?.find((x) => x.task_id === taskId);
+        if (!t) return;
+        openModal(
+          `编辑说明 · ${taskId}`,
+          `<div class="field">
+             <label>Next Step / 备注</label>
+             <textarea class="input" id="m-next" style="min-height:110px">${esc(t.next_step || "")}</textarea>
+           </div>`,
+          async () => {
+            await patchTask(taskId, { next_step: document.getElementById("m-next").value.trim() }, "已保存说明");
+            closeModal();
+          },
+          "保存"
+        );
+        return;
+      }
+
+      // Release train completion (double confirmation modal)
+      const completeRelBtn = e.target.closest("[data-complete-release]");
+      if (completeRelBtn) {
+        e.stopPropagation();
+        const relId = completeRelBtn.dataset.completeRelease;
+        const r = state.snapshot?.active_tasks?.find((x) => x.task_id === relId);
+        if (!r) return;
+        const inc = r.included_tasks || [];
+        const unchecked = (r.checklist || []).filter((c) => !c.done).length;
+        openModal(
+          `确认发版完成并批量归档 · ${r.title}`,
+          `<div class="field">
+             <label>高影响确认</label>
+             <div style="font-size:12.5px;color:var(--fg-secondary);line-height:1.55">
+               此操作将把车次 <span class="mono">${esc(relId)}</span> 及其包含的 <strong>${esc(inc.length)}</strong> 个 <span class="mono">merged_pending_release</span> 任务一键归档至 <span class="mono">tasks/archive/</span>。
+               ${unchecked > 0 ? `<div style="color:var(--sig-amber);margin-top:6px">注意：当前仍有 ${esc(unchecked)} 项发版检查项未勾选。</div>` : ""}
+             </div>
+           </div>
+           <div class="field">
+             <label>发版版本号 / Tag（可选）</label>
+             <input class="input mono" id="m-rel-tag" placeholder="例如：v0.9.0" />
+           </div>
+           <div class="field">
+             <label>备注（可选）</label>
+             <input class="input" id="m-rel-note" placeholder="例如：AWS SaaS Prod Helm rev 42 验证通过" />
+           </div>`,
+          async () => {
+            const release_tag = document.getElementById("m-rel-tag").value.trim();
+            const note = document.getElementById("m-rel-note").value.trim();
+            const res = await apiRequest("POST", `/api/releases/${encodeURIComponent(relId)}/complete`, {
+              confirm: true,
+              release_tag: release_tag || undefined,
+              note: note || undefined,
+            });
+            state.selectedTaskId = null;
+            showToast("发版车次已归档", `共归档 ${res.archived_tasks?.length ?? 0} 个任务 + 车次本身`, "ok");
+            closeModal();
+            await refreshSnapshot();
+          },
+          "确认已发 Prod 并归档"
+        );
+        return;
+      }
+
+      // Single task archive
+      const archBtn = e.target.closest("[data-archive]");
+      if (archBtn) {
+        e.stopPropagation();
+        const taskId = archBtn.dataset.archive;
+        openModal(
+          `归档任务 · ${taskId}`,
+          `<div class="field">
+             <label>确认操作</label>
+             <div style="font-size:12.5px;color:var(--fg-secondary);line-height:1.55">将任务 <span class="mono">${esc(taskId)}</span> 移入 <span class="mono">tasks/archive/</span> 并自动刷新 <span class="mono">BOARD.md / BACKLOG.md</span>。</div>
+           </div>
+           <div class="field">
+             <label>归档原因（可选）</label>
+             <input class="input" id="m-archive-reason" value="completed_via_dashboard" />
+           </div>`,
+          async () => {
+            const reason = document.getElementById("m-archive-reason").value.trim() || "completed_via_dashboard";
+            await apiRequest("POST", `/api/tasks/${encodeURIComponent(taskId)}/archive`, { reason });
+            if (state.selectedTaskId === taskId) state.selectedTaskId = null;
+            showToast("已归档任务", taskId, "ok");
+            closeModal();
+            await refreshSnapshot();
+          },
+          "确认归档"
+        );
+        return;
+      }
+
+      const checkStatusBtn = e.target.closest("[data-check-status]");
+      if (checkStatusBtn) {
+        e.stopPropagation();
+        checkStatusBtn.disabled = true;
+        const taskId = checkStatusBtn.dataset.checkStatus;
+        const task = state.snapshot?.active_tasks?.find((t) => t.task_id === taskId);
+        try {
+          await triggerAction({ kind: "check_status", task_id: taskId, project_slug: task?.project_slug });
+        } catch {
+          // triggerAction reports the error.
+        } finally {
+          checkStatusBtn.disabled = false;
+        }
+        return;
+      }
+
+      // Needs Human decision buttons
+      const decideBtn = e.target.closest("[data-decide]");
+      if (decideBtn) {
+        e.stopPropagation();
+        const decision = decideBtn.dataset.decide;
+        const taskId = decideBtn.dataset.task;
+        const task = state.snapshot?.active_tasks?.find((t) => t.task_id === taskId);
+        const pr = task?.prs?.find((p) => p.url === task.pull_request?.url);
+        const labels = {
+          approve_merge: "批准并合入 PR",
+          approve_pr: "提交 Approve",
+          request_changes: "提交 Request Changes",
+          continue_round: decideBtn.textContent.trim(),
+          custom: "发送自定义指示",
+        };
+        openModal(
+          `${labels[decision] || decision} · ${taskId}`,
+          `<div class="field">
+             <label>补充说明 / 指示（${decision === "custom" ? "必填" : "可选"}）</label>
+             <textarea class="input" id="m-note" placeholder="输入给 Orchestrator 的指示..."></textarea>
+           </div>`,
+          async () => {
+            const note = document.getElementById("m-note").value.trim();
+            if (decision === "custom" && !note) { showToast("请输入指令内容", "", "warn"); return; }
+            await triggerAction({
+              kind: "decision", task_id: taskId, project_slug: task?.project_slug,
+              pr_number: pr?.number, pr_url: pr?.url, decision, note,
+            });
+            closeModal();
+          },
+          "确认并触发"
+        );
+        return;
+      }
+
+      if (e.target.closest("[data-stop], a, button, select, input, label")) return;
+
+      const openTask = e.target.closest("[data-open-task]");
+      if (openTask) {
+        state.selectedTaskId = openTask.dataset.openTask;
+        state.selectedReceiptIdx = 0;
+        render();
+        return;
+      }
+    });
+
+    // Keyboard open for focused task rows
+    document.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-open-task]")) {
+        e.preventDefault();
+        state.selectedTaskId = e.target.dataset.openTask;
+        state.selectedReceiptIdx = 0;
+        render();
+      }
+    });
+
+    document.getElementById("project-filter").addEventListener("change", (e) => { state.project = e.target.value; render(); });
+    document.getElementById("search-input").addEventListener("input", (e) => { state.query = e.target.value; render(); });
+    document.getElementById("drawer-close").addEventListener("click", () => { state.selectedTaskId = null; render(); });
+    document.getElementById("drawer-backdrop").addEventListener("click", (e) => {
+      if (e.target.id === "drawer-backdrop") { state.selectedTaskId = null; render(); }
+    });
+    document.getElementById("modal-backdrop").addEventListener("click", (e) => {
+      if (e.target.id === "modal-backdrop") closeModal();
+    });
+    document.getElementById("modal-close").addEventListener("click", closeModal);
+    document.getElementById("modal-cancel").addEventListener("click", closeModal);
+
+    async function runModalSubmit() {
+      if (!state.modalSubmitFn) return;
+      const btn = document.getElementById("modal-submit");
+      if (btn.disabled) return;
+      btn.disabled = true;
+      try {
+        await state.modalSubmitFn();
+      } catch (err) {
+        showToast("操作失败", err?.message || String(err), "err");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    document.getElementById("modal-submit").addEventListener("click", runModalSubmit);
+
+    async function submitThreadMessage(steer = false) {
+      const inp = document.getElementById("drawer-thread-input");
+      const text = inp.value.trim();
+      if (!text || !state.selectedTaskId) return;
+      inp.disabled = true;
+      try {
+        const res = await apiRequest("POST", `/api/tasks/${encodeURIComponent(state.selectedTaskId)}/thread`, {
+          body: text,
+          steer,
+        });
+        inp.value = "";
+        if (steer) reportWebhookResult(res, "已发送到 Orchestrator");
+        else showToast("已写入 Thread 备注", "", "ok");
+        await refreshSnapshot();
+        const bodyEl = document.getElementById("drawer-body");
+        if (bodyEl) bodyEl.scrollTop = bodyEl.scrollHeight;
+      } catch (err) {
+        showToast("发送失败", err.message, "err");
+      } finally {
+        inp.disabled = false;
+        inp.focus();
+      }
+    }
+
+    document.getElementById("drawer-comment-btn").addEventListener("click", () => submitThreadMessage(false));
+    document.getElementById("drawer-steer-btn").addEventListener("click", () => submitThreadMessage(true));
+    document.getElementById("drawer-thread-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        submitThreadMessage(true);
+      } else if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        submitThreadMessage(false);
+      }
+    });
+
+    document.getElementById("btn-theme").addEventListener("click", () => {
+      const html = document.documentElement;
+      const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+      localStorage.setItem("zstack-theme", next);
+      updateThemeIcon();
+    });
+    const savedTheme = localStorage.getItem("zstack-theme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    }
+    updateThemeIcon();
+
+    document.addEventListener("keydown", (e) => {
+      const modalOpen = document.getElementById("modal-backdrop").classList.contains("open");
+      if (e.key === "Escape") {
+        closeCreateMenu();
+        if (modalOpen) closeModal();
+        else if (state.selectedTaskId) { state.selectedTaskId = null; render(); }
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && modalOpen && state.modalSubmitFn) {
+        e.preventDefault();
+        runModalSubmit();
+        return;
+      }
+      if (e.key === "/" && !modalOpen && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
+        e.preventDefault();
+        document.getElementById("search-input").focus();
+      }
+    });
+
+    function connectSse() {
+      const es = new EventSource("/api/events");
+      es.addEventListener("snapshot", (ev) => {
+        try {
+          state.snapshot = JSON.parse(ev.data);
+          state.sseState = "live";
+          render();
+        } catch {}
+      });
+      es.onerror = () => {
+        state.sseState = "reconnecting";
+        updateStatusBadge();
+      };
+    }
+
+    refreshSnapshot();
+    connectSse();
+  </script>
+</body>
+</html>

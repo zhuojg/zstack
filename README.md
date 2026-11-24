@@ -23,11 +23,31 @@ Personal Software Factory control plane for T3 Code.
 
 ```bash
 ./scripts/zstack active
-./scripts/zstack init-task tsk-20261123-example-demo example "任务标题"
-./scripts/zstack next-request-id tsk-20261123-example-demo review-r1 sha-2194243d
-./scripts/zstack check-receipt tsk-20261123-example-demo tasks/active/.../receipts/review.json --pinned-sha 2194243d --role reviewer
-./scripts/zstack merge-gate tsk-20261123-example-demo
+./scripts/zstack init-task example-demo example "Task title"
+./scripts/zstack next-request-id example-demo review-r1 sha-2194243d
+./scripts/zstack check-receipt example-demo tasks/active/.../receipts/review.json --pinned-sha 2194243d --role reviewer
+./scripts/zstack merge-gate example-demo
 ./scripts/zstack reindex
 ./scripts/zstack check-secrets
 ./scripts/zstack sync-template --dry-run
 ```
+
+## Board v2 and background service
+
+Board v2 shows live task, backlog, release, and archive views. Run
+`./scripts/zstack serve` and open `http://127.0.0.1:4390` for an interactive
+session. Run `./scripts/zstack board` to regenerate the Markdown board.
+
+On macOS, `./scripts/zstack daemon install` registers a per-user LaunchAgent
+that keeps the loopback dashboard and its GitHub watcher running together.
+Use `./scripts/zstack daemon status`, `./scripts/zstack daemon restart`, and
+`./scripts/zstack daemon logs` to manage it. Run either the foreground server
+or the LaunchAgent on the default port.
+
+The watcher in `scripts/github-poller.mjs` uses the authenticated GitHub CLI
+to check configured repositories and tracked pull requests. It reuses ETags
+to skip unchanged responses. The board shows watcher status and lets you
+pause polling, change the interval, or sync immediately.
+
+Run `node --test tests/*.test.mjs` to exercise the watcher with a mock GitHub
+CLI and a local webhook receiver. The LaunchAgent validation runs on macOS.
