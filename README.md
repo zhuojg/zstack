@@ -29,8 +29,17 @@ Personal Software Factory control plane for T3 Code.
 ./scripts/zstack merge-gate example-demo
 ./scripts/zstack reindex
 ./scripts/zstack check-secrets
+./scripts/zstack push-private --dry-run
 ./scripts/zstack sync-template --dry-run
 ```
+
+Use `./scripts/zstack push-private [--remote <name>] [--branch <name>] [--dry-run]`
+to synchronize a configured private remote. It defaults to `origin/main`,
+requires a clean worktree on the target branch, and runs the full
+`check-secrets` scan before a fast-forward push. Configure the public remote
+as `template` so the command can reject aliases of its URL. The JSON result
+includes the local commit, remote branch readback, and scanner results.
+Use `./scripts/zstack sync-template --push` for the sanitized public export.
 
 ## Board v2 and background service
 
@@ -49,5 +58,6 @@ to check configured repositories and tracked pull requests. It reuses ETags
 to skip unchanged responses. The board shows watcher status and lets you
 pause polling, change the interval, or sync immediately.
 
-Run `node --test tests/*.test.mjs` to exercise the watcher with a mock GitHub
-CLI and a local webhook receiver. The LaunchAgent validation runs on macOS.
+Run `node --test tests/*.test.mjs` to test the watcher and private push CLI
+using a mock GitHub CLI, a local webhook receiver, and temporary Git repositories.
+The LaunchAgent validation runs on macOS.

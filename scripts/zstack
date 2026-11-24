@@ -14,6 +14,7 @@
  *   check-receipt <task-id> <receipt-path> [--pinned-sha <sha>] [--role <role>]
  *   merge-gate <task-id>
  *   check-secrets [paths...]
+ *   push-private [--remote <name>] [--branch <name>] [--dry-run]
  *   reindex
  *   serve [--port 4390] [--host 127.0.0.1]
  *   daemon <install|uninstall|status|restart|logs>
@@ -654,7 +655,7 @@ function walkFiles(dir, out = []) {
   return out;
 }
 
-function cmdCheckSecrets(args) {
+function scanSecrets(args = []) {
   const targets = [];
   if (args.length > 0) {
     for (const p of args) {
@@ -684,11 +685,16 @@ function cmdCheckSecrets(args) {
     }
   }
 
+  return { scanned_files: targets.length, hits };
+}
+
+function cmdCheckSecrets(args) {
+  const { scanned_files, hits } = scanSecrets(args);
   if (hits.length > 0) {
     console.log(JSON.stringify({ ok: false, hits }, null, 2));
     process.exit(1);
   }
-  console.log(JSON.stringify({ ok: true, scanned_files: targets.length, hits: [] }, null, 2));
+  console.log(JSON.stringify({ ok: true, scanned_files, hits }, null, 2));
 }
 
 function parseMemoryFile(filePath) {
@@ -795,6 +801,11 @@ switch (cmd) {
   case "check-secrets":
     cmdCheckSecrets(rest);
     break;
+  case "push-private": {
+    const { runPushPrivate } = await import("./push-private.mjs");
+    await runPushPrivate(rest, { root: ROOT, scanSecrets });
+    break;
+  }
   case "reindex":
     cmdReindex();
     break;
@@ -824,5 +835,5 @@ switch (cmd) {
     break;
   }
   default:
-    fail("Unknown command. Available: active | board | init-task | set-phase | bind-thread | archive-task | next-request-id | append-event | check-receipt | merge-gate | check-secrets | reindex | serve | daemon | sync-template");
+    fail("Unknown command. Available: active | board | init-task | set-phase | bind-thread | archive-task | next-request-id | append-event | check-receipt | merge-gate | check-secrets | push-private | reindex | serve | daemon | sync-template");
 }
